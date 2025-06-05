@@ -1,0 +1,255 @@
+digraph _17 {
+rankdir=LR
+subgraph cluster17diagram {
+color=black
+concentrate=true
+label=<<TABLE BORDER="0"><TR><TD>
+<B>Diagram</B><BR/>
+name=franka_osc_controller
+</TD></TR></TABLE>>;
+subgraph cluster17subsystems {
+color=white
+label=""
+s2 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>RobotOutputReceiver</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_robot_output</TD>
+<TD PORT="y0" BORDER="1" >x, u, t</TD>
+</TR>
+</TABLE>
+>];
+s3 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(TRACKING_TRAJECTORY_ACTOR)<BR/>
+channel=TRACKING_TRAJECTORY_ACTOR<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface140728215465856out -> s3:w [style="dashed", color="webpurple"];
+s4 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmTrajectoryReceiver</B><BR/>
+name=end_effector_position_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" >end_effector_position_target</TD>
+</TR>
+</TABLE>
+>];
+s5 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmTrajectoryReceiver</B><BR/>
+name=end_effector_force_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" >end_effector_force_target</TD>
+</TR>
+</TABLE>
+>];
+s6 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmOrientationTrajectoryReceiver</B><BR/>
+name=end_effector_orientation_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" >end_effector_orientation_target</TD>
+</TR>
+</TABLE>
+>];
+s7 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPublisherSystem</B><BR/>
+name=LcmPublisherSystem(FRANKA_INPUT)<BR/>
+channel=FRANKA_INPUT<BR/>
+type=lcmt_robot_input
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcm_message</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s7:e -> drakelcminterface140728215465856in [style="dashed", color="webpurple"];
+s8 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPublisherSystem</B><BR/>
+name=LcmPublisherSystem(OSC_FRANKA)<BR/>
+channel=OSC_FRANKA<BR/>
+type=lcmt_robot_input
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcm_message</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s8:e -> drakelcminterface140728215465856in [style="dashed", color="webpurple"];
+s9 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>RobotCommandSender</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u, t</TD>
+<TD PORT="y0" BORDER="1" >lcmt_robot_input</TD>
+</TR>
+</TABLE>
+>];
+s10 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>RobotCommandSender</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u, t</TD>
+<TD PORT="y0" BORDER="1" >lcmt_robot_input</TD>
+</TR>
+</TABLE>
+>];
+s11 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>EndEffectorTrajectoryGenerator</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >x</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="3">end_effector_trajectory</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >trajectory</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >lcmt_radio_out</TD>
+</TR>
+</TABLE>
+>];
+s12 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>EndEffectorOrientationGenerator</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >x</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="3">end_effector_orientation</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >trajectory</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >lcmt_radio_out</TD>
+</TR>
+</TABLE>
+>];
+s13 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>EndEffectorForceTrajectoryGenerator</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >x</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="3">end_effector_force_trajectory</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >trajectory</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >lcmt_radio_out</TD>
+</TR>
+</TABLE>
+>];
+s14 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(SAMPLING_C3_RADIO)<BR/>
+channel=SAMPLING_C3_RADIO<BR/>
+type=lcmt_radio_out
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface140728215465856out -> s14:w [style="dashed", color="webpurple"];
+s15 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>OperationalSpaceControl</B><BR/>
+name=OSC
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >x, u, t</TD>
+<TD PORT="y0" BORDER="1" >u, t</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >end_effector_target</TD>
+<TD PORT="y1" BORDER="1" >lcmt_osc_debug</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >end_effector_orientation_target</TD>
+<TD PORT="y2" BORDER="1" >failure_signal</TD>
+</TR>
+<TR>
+<TD PORT="u3" BORDER="1" >end_effector_force</TD>
+<TD PORT="y3" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s16 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPublisherSystem</B><BR/>
+name=LcmPublisherSystem(OSC_DEBUG_FRANKA)<BR/>
+channel=OSC_DEBUG_FRANKA<BR/>
+type=lcmt_osc_output
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcm_message</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s16:e -> drakelcminterface140728215465856in [style="dashed", color="webpurple"];
+s15:y0:e -> s9:u0:w
+s9:y0:e -> s7:u0:w
+s10:y0:e -> s8:u0:w
+s2:y0:e -> s15:u0:w
+s11:y0:e -> s15:u1:w
+s12:y0:e -> s15:u2:w
+s13:y0:e -> s15:u3:w
+s15:y1:e -> s16:u0:w
+s2:y0:e -> s11:u0:w
+s4:y0:e -> s11:u1:w
+s14:y0:e -> s11:u2:w
+s15:y0:e -> s10:u0:w
+s2:y0:e -> s12:u0:w
+s6:y0:e -> s12:u1:w
+s14:y0:e -> s12:u2:w
+s2:y0:e -> s13:u0:w
+s5:y0:e -> s13:u1:w
+s14:y0:e -> s13:u2:w
+s3:y0:e -> s4:u0:w
+s3:y0:e -> s5:u0:w
+s3:y0:e -> s6:u0:w
+}
+}
+}

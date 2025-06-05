@@ -1,0 +1,336 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "controllers_all",
+    srcs = [],
+    deps = [
+        ":affine_controller",
+        ":cassie_out_to_radio",
+        ":controller_failure_aggregator",
+        ":fsm_event_time",
+    ],
+)
+
+cc_library(
+    name = "c3_systems",
+    deps = [
+        ":c3_controller",
+        ":lcs_factory_system",
+    ],
+)
+
+cc_library(
+    name = "control_utils",
+    srcs = [
+        "control_utils.cc",
+    ],
+    hdrs = [
+        "control_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "pd_config_lcm",
+    srcs = ["pd_config_lcm.cc"],
+    hdrs = ["pd_config_lcm.h"],
+    deps = [
+        ":controllers",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "cassie_out_to_radio",
+    srcs = ["cassie_out_to_radio.cc"],
+    hdrs = ["cassie_out_to_radio.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "lcs_factory_system",
+    srcs = ["c3/lcs_factory_system.cc"],
+    hdrs = ["c3/lcs_factory_system.h"],
+    deps = [
+        "//multibody:utils",
+        "//solvers:c3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_controller",
+    srcs = ["c3/c3_controller.cc"],
+    hdrs = ["c3/c3_controller.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sampling_params",
+    hdrs = ["sampling_params.h"],
+)
+
+cc_library(
+    name = "generate_samples",
+    srcs = ["generate_samples.cc"],
+    hdrs = ["generate_samples.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        ":sampling_params",
+        "//solvers:c3",
+        "//multibody:utils",
+        "//multibody:geom_geom_collider",
+    ],
+)
+
+cc_library(
+    name = "quaternion_error_hessian",
+    srcs = ["quaternion_error_hessian.cc"],
+    hdrs = ["quaternion_error_hessian.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sampling_c3_controller",
+    srcs = ["sampling_based_c3_controller.cc"],
+    hdrs = ["sampling_based_c3_controller.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        ":generate_samples",
+        ":quaternion_error_hessian",
+        ":sampling_params",
+        "//solvers:lcs",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
+)
+
+cc_library(
+    name = "gravity_compensator",
+    srcs = [
+        "gravity_compensator.cc",
+    ],
+    hdrs = [
+        "gravity_compensator.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "linear_controller",
+    srcs = [
+        "linear_controller.cc",
+    ],
+    hdrs = [
+        "linear_controller.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "affine_controller",
+    srcs = [
+        "affine_controller.cc",
+    ],
+    hdrs = [
+        "affine_controller.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "constrained_lqr_controller",
+    srcs = [
+        "constrained_lqr_controller.cc",
+    ],
+    hdrs = [
+        "constrained_lqr_controller.h",
+    ],
+    deps = [
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "controllers",
+    deps = [
+        ":affine_controller",
+        ":constrained_lqr_controller",
+        ":gravity_compensator",
+        ":linear_controller",
+    ],
+)
+
+cc_test(
+    name = "affine_controller_test",
+    size = "small",
+    srcs = [
+        "test/affine_controller_test.cc",
+    ],
+    deps = [
+        ":controllers",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "time_based_fsm",
+    srcs = ["time_based_fsm.cc"],
+    hdrs = ["time_based_fsm.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "controller_failure_aggregator",
+    srcs = ["controller_failure_aggregator.cc"],
+    hdrs = ["controller_failure_aggregator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "fsm_event_time",
+    srcs = ["fsm_event_time.cc"],
+    hdrs = ["fsm_event_time.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lipm_traj_gen",
+    srcs = ["lipm_traj_gen.cc"],
+    hdrs = ["lipm_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "alip_traj_gen",
+    srcs = ["alip_traj_gen.cc"],
+    hdrs = ["alip_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/filters:s2s_kalman_filter",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_ft_traj_gen",
+    srcs = ["swing_ft_traj_gen.cc"],
+    hdrs = ["swing_ft_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "alip_swing_ft_traj_gen",
+    srcs = ["alip_swing_ft_traj_gen.cc"],
+    hdrs = ["alip_swing_ft_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "safe_velocity_controller",
+    srcs = ["safe_velocity_controller.cc"],
+    hdrs = ["safe_velocity_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "endeffector_position_controller",
+    srcs = ["endeffector_position_controller.cc"],
+    hdrs = ["endeffector_position_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "endeffector_velocity_controller",
+    srcs = ["endeffector_velocity_controller.cc"],
+    hdrs = ["endeffector_velocity_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

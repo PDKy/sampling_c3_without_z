@@ -1,0 +1,639 @@
+digraph _699 {
+rankdir=LR
+subgraph cluster699diagram {
+color=black
+concentrate=true
+label=<<TABLE BORDER="0"><TR><TD>
+<B>Diagram</B>
+</TD></TR></TABLE>>;
+subgraph cluster699subsystems {
+color=white
+label=""
+s1 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>SceneGraph</B><BR/>
+name=scene_graph
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >Source_15_pose</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="2">query</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >Source_15_configuration</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304in [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmInterfaceSystem</B><BR/>
+lcm_url=udpm://239.255.76.67:7667?ttl=0
+</TD></TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmInterfaceSystem</B><BR/>
+lcm_url=udpm://239.255.76.67:7667?ttl=0
+</TD></TR>
+</TABLE>
+>];
+drakelcminterface109235743509304in [color=webpurple];drakelcminterface109235743509304out [color=webpurple];s285 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(FRANKA_STATE_SIMULATION)<BR/>
+channel=FRANKA_STATE_SIMULATION<BR/>
+type=lcmt_robot_output
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s285:w [style="dashed", color="webpurple"];
+s286 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(OBJECT_STATE_SIMULATION)<BR/>
+channel=OBJECT_STATE_SIMULATION<BR/>
+type=lcmt_object_state
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s286:w [style="dashed", color="webpurple"];
+s287 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>RobotOutputReceiver</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_robot_output</TD>
+<TD PORT="y0" BORDER="1" >x, u, t</TD>
+</TR>
+</TABLE>
+>];
+s288 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>ObjectStateReceiver</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_object_state</TD>
+<TD PORT="y0" BORDER="1" >x, t</TD>
+</TR>
+</TABLE>
+>];
+s289 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>SubvectorPassThrough</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u0</TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+s290 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>SubvectorPassThrough</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u0</TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+s291 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>SubvectorPassThrough</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u0</TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+s292 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>Multiplexer</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >u0</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="2">y0</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >u1</TD>
+</TR>
+</TABLE>
+>];
+s293 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>FrankaKinematics</B><BR/>
+name=franka_kinematics
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >x_franka</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="2">x_lcs</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >x_object</TD>
+</TR>
+</TABLE>
+>];
+s294 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(IS_C3_MODE)<BR/>
+channel=IS_C3_MODE<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s294:w [style="dashed", color="webpurple"];
+s295 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_EXECUTION_TRAJECTORY_ACTOR)<BR/>
+channel=C3_EXECUTION_TRAJECTORY_ACTOR<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s295:w [style="dashed", color="webpurple"];
+s296 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(REPOS_EXECUTION_TRAJECTORY_ACTOR)<BR/>
+channel=REPOS_EXECUTION_TRAJECTORY_ACTOR<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s296:w [style="dashed", color="webpurple"];
+s297 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_TRAJECTORY_ACTOR_CURR_PLAN)<BR/>
+channel=C3_TRAJECTORY_ACTOR_CURR_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s297:w [style="dashed", color="webpurple"];
+s298 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_TRAJECTORY_OBJECT_CURR_PLAN)<BR/>
+channel=C3_TRAJECTORY_OBJECT_CURR_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s298:w [style="dashed", color="webpurple"];
+s299 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_FORCES_CURR)<BR/>
+channel=C3_FORCES_CURR<BR/>
+type=lcmt_c3_forces
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s299:w [style="dashed", color="webpurple"];
+s300 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(DYNAMICALLY_FEASIBLE_CURR_PLAN)<BR/>
+channel=DYNAMICALLY_FEASIBLE_CURR_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s300:w [style="dashed", color="webpurple"];
+s301 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN)<BR/>
+channel=DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s301:w [style="dashed", color="webpurple"];
+s302 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_TRAJECTORY_ACTOR_BEST_PLAN)<BR/>
+channel=C3_TRAJECTORY_ACTOR_BEST_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s302:w [style="dashed", color="webpurple"];
+s303 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_TRAJECTORY_OBJECT_BEST_PLAN)<BR/>
+channel=C3_TRAJECTORY_OBJECT_BEST_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s303:w [style="dashed", color="webpurple"];
+s304 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_FORCES_BEST)<BR/>
+channel=C3_FORCES_BEST<BR/>
+type=lcmt_c3_forces
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s304:w [style="dashed", color="webpurple"];
+s305 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(DYNAMICALLY_FEASIBLE_BEST_PLAN)<BR/>
+channel=DYNAMICALLY_FEASIBLE_BEST_PLAN<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s305:w [style="dashed", color="webpurple"];
+s306 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(SAMPLE_LOCATIONS)<BR/>
+channel=SAMPLE_LOCATIONS<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s306:w [style="dashed", color="webpurple"];
+s307 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(SAMPLE_BUFFER)<BR/>
+channel=SAMPLE_BUFFER<BR/>
+type=lcmt_sample_buffer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s307:w [style="dashed", color="webpurple"];
+s308 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(SAMPLE_COSTS)<BR/>
+channel=SAMPLE_COSTS<BR/>
+type=lcmt_timestamped_saved_traj
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s308:w [style="dashed", color="webpurple"];
+s309 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_ACTUAL)<BR/>
+channel=C3_ACTUAL<BR/>
+type=lcmt_c3_state
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s309:w [style="dashed", color="webpurple"];
+s310 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_TARGET)<BR/>
+channel=C3_TARGET<BR/>
+type=lcmt_c3_state
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s310:w [style="dashed", color="webpurple"];
+s311 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmSubscriberSystem</B><BR/>
+name=LcmSubscriberSystem(C3_FINAL_TARGET)<BR/>
+channel=C3_FINAL_TARGET<BR/>
+type=lcmt_c3_state
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BL"></TD>
+<TD PORT="y0" BORDER="1" >y0</TD>
+</TR>
+</TABLE>
+>];
+drakelcminterface109235743509304out -> s311:w [style="dashed", color="webpurple"];
+s312 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>MultibodyPositionToGeometryPose</B>
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >position</TD>
+<TD PORT="y0" BORDER="1" >geometry_pose</TD>
+</TR>
+</TABLE>
+>];
+s313 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>MeshcatVisualizer</B><BR/>
+name=meshcat_visualizer(visualizer)<BR/>
+path=/drake/visualizer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >query_object</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+meshcat_in [label=Meshcat, color=magenta];
+s313:e -> meshcat_in [style=dashed, color=magenta]
+s314 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: plans/curr_plannedobject_position_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s372 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: plans/curr_plannedend_effector_position_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s445 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: plans/dynamically_feasible_curr_plan_actoree_position_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s528 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: plans/dynamically_feasible_curr_planobject_position_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s593 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: samples_sample_locations
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s656 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>PointCloudFromSampleBuffer</B><BR/>
+name=PointCloudFromSampleBuffer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_sample_buffer</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="2">sample_buffer_point_cloud</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >new_sample_costs</TD>
+</TR>
+</TABLE>
+>];
+s657 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>MeshcatPointCloudVisualizer</B><BR/>
+path=/drake/sample_buffer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >cloud</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="2" SIDES="BR"></TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >X_ParentCloud</TD>
+</TR>
+</TABLE>
+>];
+meshcat_in [label=Meshcat, color=magenta];
+s657:e -> meshcat_in [style=dashed, color=magenta]
+s658 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmC3TargetDrawer</B><BR/>
+name=LcmC3TargetDrawer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_c3_state: final_target</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="3" SIDES="BR"></TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >lcmt_c3_state: target</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >lcmt_c3_state: actual</TD>
+</TR>
+</TABLE>
+>];
+s659 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmForceDrawer</B><BR/>
+name=LcmForceDrawer: curr_end_effector_force_target
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj: actor</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="3" SIDES="BR"></TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >t_robot</TD>
+</TR>
+<TR>
+<TD PORT="u2" BORDER="1" >lcmt_c3_forces</TD>
+</TR>
+</TABLE>
+>];
+s660 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>C3ModeVisualizer</B><BR/>
+name=C3ModeVisualizer
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj: is_c3_mode_input</TD>
+<TD PORT="y0" BORDER="1" ROWSPAN="2">mode_visualization_traj</TD>
+</TR>
+<TR>
+<TD PORT="u1" BORDER="1" >curr_lcs_state</TD>
+</TR>
+</TABLE>
+>];
+s661 [shape=none, border=0, label=<
+<TABLE BORDER="0" CELLSPACING="0">
+<TR><TD BORDER="1" COLSPAN="2">
+<B>LcmPoseDrawer</B><BR/>
+name=LcmPoseDrawer: c3_modec3_mode_visualization
+</TD></TR>
+<TR>
+<TD PORT="u0" BORDER="1" >lcmt_timestamped_saved_traj</TD>
+<TD PORT="y0" BORDER="1" COLOR="grey" ROWSPAN="1" SIDES="BR"></TD>
+</TR>
+</TABLE>
+>];
+s286:y0:e -> s288:u0:w
+s312:y0:e -> s1:u0:w
+s298:y0:e -> s314:u0:w
+s287:y0:e -> s290:u0:w
+s285:y0:e -> s287:u0:w
+s311:y0:e -> s658:u0:w
+s310:y0:e -> s658:u1:w
+s309:y0:e -> s658:u2:w
+s297:y0:e -> s659:u0:w
+s290:y0:e -> s659:u1:w
+s299:y0:e -> s659:u2:w
+s294:y0:e -> s660:u0:w
+s293:y0:e -> s660:u1:w
+s289:y0:e -> s292:u0:w
+s291:y0:e -> s292:u1:w
+s292:y0:e -> s312:u0:w
+s287:y0:e -> s289:u0:w
+s300:y0:e -> s528:u0:w
+s297:y0:e -> s372:u0:w
+s301:y0:e -> s445:u0:w
+s306:y0:e -> s593:u0:w
+s288:y0:e -> s291:u0:w
+s287:y0:e -> s293:u0:w
+s288:y0:e -> s293:u1:w
+s1:y0:e -> s313:u0:w
+s660:y0:e -> s661:u0:w
+s307:y0:e -> s656:u0:w
+s308:y0:e -> s656:u1:w
+s656:y0:e -> s657:u0:w
+}
+}
+}

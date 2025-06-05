@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+    <model name="push_anything"> 
+    
+        <link name="body">
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                
+                <mass> 0.002359675094767367 </mass>
+                
+                <inertia>
+                    <ixx>1.4894214166264472e-05</ixx>
+                    <ixy>-6.653777737402177e-07</iyy>
+                    <ixz>-2.1546548467931242e-07</ixz>
+                    <iyy>1.0947918724740261e-05</iyy>
+                    <iyz>3.767099415224242e-08</iyz>
+                    <izz>5.7521230691502485e-06</izz>
+                </inertia>
+            </inertial>
+            
+            <visual name="body">
+                <geometry>
+                <mesh>
+                    <uri>mesh/cracker_box/textured.obj</uri>
+                </mesh>
+                </geometry>
+                </visual>
+                
+            <collision name = "body_volume">
+                <geometry>
+                    <mesh>
+                        <uri>mesh/cracker_box/textured.obj</uri>
+                    </mesh>
+                </geometry>
+                <drake:proximity_properties>
+                <drake:compliant_hydroelastic/>
+                <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+                <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+                <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+                <drake:mu_dynamic>0.3</drake:mu_dynamic>
+                </drake:proximity_properties>
+                
+            </collision>   
+        </link>
+<link name="corner_0">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0</mass>
+        <inertia>
+          <ixx>0.</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.</iyy>
+          <iyz>0</iyz>
+          <izz>0.</izz>
+        </inertia>
+      </inertial>
+      
+    <collision name="sphere">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <!-- <drake:compliant_hydroelastic/>
+        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> -0.12 -0.08 -0.02 0 0 0</pose>
+      </collision>
+      
+    <visual name="corner_0">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <material>
+        <diffuse>1 0 0 1</diffuse>
+        </material>
+        <pose> 0.0899867 0 0 0 0 0</pose>
+      </visual>
+    </link>
+
+<link name="corner_1">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0</mass>
+        <inertia>
+          <ixx>0.</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.</iyy>
+          <iyz>0</iyz>
+          <izz>0.</izz>
+        </inertia>
+      </inertial>
+      
+    <collision name="sphere">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <!-- <drake:compliant_hydroelastic/>
+        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> -0.12 -0.08 -0.02 0 0 0</pose>
+      </collision>
+      
+    <visual name="corner_1">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <material>
+        <diffuse>1 0 0 1</diffuse>
+        </material>
+        <pose> -0.0899867 -0.16777599999999998 0 0 0 0</pose>
+      </visual>
+    </link>
+
+<link name="corner_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0</mass>
+        <inertia>
+          <ixx>0.</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.</iyy>
+          <iyz>0</iyz>
+          <izz>0.</izz>
+        </inertia>
+      </inertial>
+      
+    <collision name="sphere">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <!-- <drake:compliant_hydroelastic/>
+        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> -0.12 -0.08 -0.02 0 0 0</pose>
+      </collision>
+      
+    <visual name="corner_2">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <material>
+        <diffuse>1 0 0 1</diffuse>
+        </material>
+        <pose> -0.0899867 0.16777599999999998 0 0 0 0</pose>
+      </visual>
+    </link>
+
+
+</model>
+
+</sdf>
+
+</model>
+
+</sdf>
