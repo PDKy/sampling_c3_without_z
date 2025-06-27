@@ -12,7 +12,6 @@ workspace(name = "dairlib")
 
 # Choose a revision of Drake to use.
 DRAKE_COMMIT = "v1.33.0"
-
 DRAKE_CHECKSUM = "2713ad1ea53ed7b9cfe1ba751eeeab7dc173408753ead21b7bafb0436b92dcf3"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

@@ -514,16 +514,38 @@ int DoMain(int argc,  char* argv[]) {
 
   // Create the plant for the LCS.
   DiagramBuilder<double> plant_builder;
+
+  DiagramBuilder<double> plant_builder_c3;
+
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+
+  auto [plant_for_lcs_c3, scene_graph_c3] =
+    AddMultibodyPlantSceneGraph(&plant_builder_c3, 0.0);
 
   Parser parser_for_lcs(&plant_for_lcs);
   parser_for_lcs.SetAutoRenaming(true);
 
+  Parser parser_for_lcs_c3(&plant_for_lcs_c3);
+  parser_for_lcs_c3.SetAutoRenaming(true);
+
   // Load simple model of end effector (just a sphere) for the lcs plant.
-  parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.jack_model);
-  parser_for_lcs.AddModels(controller_params.ground_model);	
+  drake::multibody::ModelInstanceIndex end_effector_simple_index_real = parser_for_lcs.AddModels(controller_params.end_effector_simple_model)[0];
+  drake::multibody::ModelInstanceIndex jack_model_index_real = parser_for_lcs.AddModels(controller_params.jack_model)[0];
+  drake::multibody::ModelInstanceIndex ground_model_index_real = parser_for_lcs.AddModels(controller_params.ground_model)[0];
+
+  drake::multibody::ModelInstanceIndex end_effector_simple_index_c3;
+
+  if (sampling_c3_options.with_z) {
+    end_effector_simple_index_c3 = parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model)[0];
+  }else {
+    end_effector_simple_index_c3 = parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model_without_z)[0];
+  }
+
+  drake::multibody::ModelInstanceIndex jack_model_index_c3 = parser_for_lcs_c3.AddModels(controller_params.jack_model)[0];
+  drake::multibody::ModelInstanceIndex ground_model_index_c3 = parser_for_lcs_c3.AddModels(controller_params.ground_model)[0];
+
+
 	RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Eigen::Vector3d p_world_to_ground = sim_params.p_world_to_franka +
                                       sim_params.p_franka_to_ground;
@@ -531,11 +553,31 @@ int DoMain(int argc,  char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              p_world_to_ground);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("base_link"), X_WI);
+                           plant_for_lcs.GetFrameByName("base_link",end_effector_simple_index_real), X_WI);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("ground"),
+                           plant_for_lcs.GetFrameByName("ground",ground_model_index_real),
                            X_W_G);
+
+  RigidTransform<double> ee_Z = RigidTransform<double>::Identity();
+  ee_Z.set_translation(Eigen::Matrix<double,3,1>(0, 0,  sampling_c3_options.c3_height));
+
+  if (sampling_c3_options.with_z) {
+    plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
+                             plant_for_lcs_c3.GetFrameByName("base_link",end_effector_simple_index_c3), X_WI);
+  }else {
+    plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
+                         plant_for_lcs_c3.GetFrameByName("base_link",end_effector_simple_index_c3), ee_Z);
+  }
+
+  plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
+                           plant_for_lcs_c3.GetFrameByName("ground",ground_model_index_c3),
+                           X_W_G);
+
+
+
   plant_for_lcs.Finalize();
+  plant_for_lcs_c3.Finalize();
+
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
 
@@ -545,6 +587,18 @@ int DoMain(int argc,  char* argv[]) {
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
   auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+
+
+  //c3 ad plant build
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff_c3 =
+      drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs_c3);
+  auto plant_diagram_c3 = plant_builder_c3.Build();
+  std::unique_ptr<drake::systems::Context<double>> diagram_context_c3 =
+      plant_diagram_c3->CreateDefaultContext();
+  auto& plant_for_lcs_context_c3 = plant_diagram_c3->GetMutableSubsystemContext(
+      plant_for_lcs_c3, diagram_context_c3.get());
+  auto plant_for_lcs_context_ad_c3 = plant_for_lcs_autodiff_c3->CreateDefaultContext();
+
 
 
   std::vector<std::vector<SortedPair<GeometryId>>>
@@ -558,8 +612,80 @@ int DoMain(int argc,  char* argv[]) {
                   // ee-jack contact, and the second list (of 6) will get
                   // resolved to 3 ground-jack contacts.
 
+
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs_c3;
+
   //   Creating a map of contact geoms
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
+  std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms_c3;
+
+  if(FLAGS_demo_name == "push_t") {
+
+    drake::geometry::GeometryId ee_contact_points =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("end_effector_simple"))[0];
+    drake::geometry::GeometryId horizontal_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("horizontal_link"))[0];
+    drake::geometry::GeometryId vertical_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("vertical_link"))[0];
+
+    drake::geometry::GeometryId corner_nxynz_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("corner_nxynz"))[0];
+    drake::geometry::GeometryId corner_nxnynz_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("corner_nxnynz"))[0];
+    drake::geometry::GeometryId corner_xynz_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("corner_xynz"))[0];
+
+    drake::geometry::GeometryId ground_geoms =
+        plant_for_lcs_c3.GetCollisionGeometriesForBody(
+            plant_for_lcs_c3.GetBodyByName("ground"))[0];
+
+    //   Creating a map of contact geoms
+    contact_geoms_c3["EE"] = ee_contact_points;
+    contact_geoms_c3["horizontal_link"] = horizontal_geoms;
+    contact_geoms_c3["vertical_link"] = vertical_geoms;
+    contact_geoms_c3["corner_nxynz"] = corner_nxynz_geoms;
+    contact_geoms_c3["corner_nxnynz"] = corner_nxnynz_geoms;
+    contact_geoms_c3["corner_xynz"] = corner_xynz_geoms;
+    contact_geoms_c3["GROUND"] = ground_geoms;
+
+    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+
+    //   Creating a list of contact pairs for the end effector and the jack to
+    //   hand over to lcs factory in the controller to resolve
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms_c3["EE"], contact_geoms_c3["horizontal_link"]));
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms_c3["EE"], contact_geoms_c3["vertical_link"]));
+
+    //   Creating a list of contact pairs for the jack and the ground
+        SortedPair<GeometryId> ground_contact_1{
+        SortedPair(contact_geoms_c3["corner_nxynz"], contact_geoms_c3["GROUND"])};
+        SortedPair<GeometryId> ground_contact_2{
+        SortedPair(contact_geoms_c3["corner_nxnynz"], contact_geoms_c3["GROUND"])};
+        SortedPair<GeometryId> ground_contact_3{
+        SortedPair(contact_geoms_c3["corner_xynz"], contact_geoms_c3["GROUND"])};
+
+    contact_pairs_c3.push_back(ee_contact_pairs);
+
+    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
+        // If num_contacts_index is 2 or 3, we add an additional contact pair
+        // between the end effector and the ground.
+        std::vector<SortedPair<GeometryId>> ee_ground_contact{
+        SortedPair(contact_geoms_c3["EE"], contact_geoms_c3["GROUND"])};
+        contact_pairs_c3.push_back(ee_ground_contact);
+    }
+    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+    ground_object_contact_pairs.push_back(ground_contact_1);
+    ground_object_contact_pairs.push_back(ground_contact_2);
+    ground_object_contact_pairs.push_back(ground_contact_3);
+    contact_pairs_c3.push_back(ground_object_contact_pairs);
+}
 
   //   Change contact geoms based on the demo_name
   if(FLAGS_demo_name == "push_t") {
@@ -889,11 +1015,17 @@ int DoMain(int argc,  char* argv[]) {
     c3_options.use_predicted_x0_c3 = false;
   #endif
   DiagramBuilder<double> builder;
-  auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
-    plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-    plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
-    sampling_c3_options,
-    sampling_params, verbose);
+
+  auto controller = builder.AddSystem<systems::SamplingC3Controller>(
+      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
+      plant_for_lcs_context_ad.get(), contact_pairs,
+
+      plant_for_lcs_c3, &plant_for_lcs_context_c3, *plant_for_lcs_autodiff_c3,
+      plant_for_lcs_context_ad_c3.get(), contact_pairs_c3,
+
+      c3_options,
+      sampling_c3_options, sampling_params, verbose);
+
   auto controller_context = controller->CreateDefaultContext();
 
   auto owned_diagram = builder.Build();

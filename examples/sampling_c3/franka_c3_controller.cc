@@ -165,9 +165,9 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_for_lcs(&plant_for_lcs);
   parser_for_lcs.SetAutoRenaming(true);
   /// Loading simple model of end effector (just a sphere) for the lcs plant
-  parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.jack_model);
-  parser_for_lcs.AddModels(controller_params.ground_model);
+  drake::multibody::ModelInstanceIndex end_effector_simple_index_real = parser_for_lcs.AddModels(controller_params.end_effector_simple_model)[0];
+  drake::multibody::ModelInstanceIndex jack_model_index_real = parser_for_lcs.AddModels(controller_params.jack_model)[0];
+  drake::multibody::ModelInstanceIndex ground_model_index_real = parser_for_lcs.AddModels(controller_params.ground_model)[0];
 
   // TO DO: The base link may change to the simple end effector model link name
   // or might just be removed entirely.
@@ -178,41 +178,41 @@ int DoMain(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              p_world_to_ground);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("base_link"), X_WI);
+                           plant_for_lcs.GetFrameByName("base_link",end_effector_simple_index_real), X_WI);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("ground"),
+                           plant_for_lcs.GetFrameByName("ground",ground_model_index_real),
                            X_W_G);
   plant_for_lcs.Finalize();
 
 
   //create a sudo plant without z for calculation of c3
+    drake::multibody::ModelInstanceIndex end_effector_simple_index_c3;
+
   Parser parser_for_lcs_c3(&plant_for_lcs_c3);
   parser_for_lcs_c3.SetAutoRenaming(true);
   /// Loading simple model of end effector (just a sphere) for the lcs plant
   if (sampling_c3_options.with_z) {
-    parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
+    end_effector_simple_index_c3 = parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model)[0];
   }else {
-    parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model_without_z);
+    end_effector_simple_index_c3 = parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model_without_z)[0];
   }
 
-  parser_for_lcs_c3.AddModels(controller_params.end_effector_simple_model_without_z);
-  parser_for_lcs_c3.AddModels(controller_params.jack_model);
-  parser_for_lcs_c3.AddModels(controller_params.ground_model);
+  drake::multibody::ModelInstanceIndex jack_model_index_c3 = parser_for_lcs_c3.AddModels(controller_params.jack_model)[0];
+  drake::multibody::ModelInstanceIndex ground_model_index_c3 = parser_for_lcs_c3.AddModels(controller_params.ground_model)[0];
 
   RigidTransform<double> ee_Z = RigidTransform<double>::Identity();
   ee_Z.set_translation(Eigen::Matrix<double,3,1>(0, 0,  sampling_c3_options.c3_height));
 
   if (sampling_c3_options.with_z) {
-    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                             plant_for_lcs.GetFrameByName("base_link"), X_WI);
+    plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
+                             plant_for_lcs_c3.GetFrameByName("base_link",end_effector_simple_index_c3), X_WI);
   }else {
     plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
-                         plant_for_lcs_c3.GetFrameByName("base_link"), ee_Z);
+                         plant_for_lcs_c3.GetFrameByName("base_link",end_effector_simple_index_c3), ee_Z);
   }
+
   plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
-                           plant_for_lcs_c3.GetFrameByName("base_link"), ee_Z);
-  plant_for_lcs_c3.WeldFrames(plant_for_lcs_c3.world_frame(),
-                           plant_for_lcs_c3.GetFrameByName("ground"),
+                           plant_for_lcs_c3.GetFrameByName("ground",ground_model_index_c3),
                            X_W_G);
   plant_for_lcs_c3.Finalize();
 
@@ -651,7 +651,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, &lcm));
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka,franka_index);
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
   auto radio_sub =

@@ -55,6 +55,7 @@ SamplingC3Controller::SamplingC3Controller(
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_c3,
     drake::systems::Context<drake::AutoDiffXd>* context_ad_c3,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms_c3,
+
     C3Options c3_options,
     SamplingC3Options sampling_c3_options,
     SamplingC3SamplingParams sampling_params,
@@ -739,6 +740,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     candidate_states.insert(candidate_states.begin(), repositioning_target_state);
   }
   // Insert the current location at the beginning of the candidate states.
+  //TODO may need to disable the x_lcs_curr
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
 
@@ -864,7 +866,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   #pragma omp parallel for num_threads(num_threads_to_use_)
     for (int i = 0; i < num_total_samples; i++) {
       // Get the candidate state, its LCS representation.
-      Eigen::VectorXd test_state = candidate_states.at(i);
+      Eigen::VectorXd test_state(n_x_c3_);
+      if (sampling_c3_options_.with_z) {
+        test_state << candidate_states.at(i);
+      }else {
+        test_state  << candidate_states[i].head(2),candidate_states[i].segment(3,9),candidate_states[i].segment(13,6);
+      }
+
       solvers::LCS test_system = candidate_lcs_objects.at(i);
       std::vector<Eigen::MatrixXd> G = G_;
       std::vector<Eigen::MatrixXd> U = U_;
@@ -873,37 +881,39 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Optionally the current location can use a different number of contacts
       // than the other samples.
-      if ((i == 0) &&
-          (sampling_c3_options_.num_contacts_index_for_curr_location !=
-            sampling_c3_options_.num_contacts_index)) {
-        vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
-        resolved_contact_pairs_for_curr_location =
-          LCSFactory::PreProcessor(
-            plant_, *context_, contact_pairs_,
-            sampling_c3_options_.resolve_contacts_to_list[
-              sampling_c3_options_.num_contacts_index_for_curr_location],
-            c3_options_.num_friction_directions,
-            sampling_c3_options_.num_contacts[
-              sampling_c3_options_.num_contacts_index_for_curr_location],
-            verbose_);
-        test_system =
-          solvers::LCSFactory::LinearizePlantToLCS(
-            plant_, *context_, plant_ad_, *context_ad_,
-            resolved_contact_pairs_for_curr_location,
-            c3_options_.num_friction_directions,
-            sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_curr_location],
-            dt_, N_, contact_model_);
 
-        G = G_for_curr_location_;
-        U = U_for_curr_location_;
-        int n_lambda = 2 * c3_options_.num_friction_directions *
-          sampling_c3_options_.num_contacts[
-            sampling_c3_options_.num_contacts_index_for_curr_location];
-        delta = std::vector<Eigen::VectorXd>(
-          N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
-        w = std::vector<Eigen::VectorXd>(
-          N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
-      }
+      //don't need it for now
+      // if ((i == 0) &&
+      //     (sampling_c3_options_.num_contacts_index_for_curr_location !=
+      //       sampling_c3_options_.num_contacts_index)) {
+      //   vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
+      //   resolved_contact_pairs_for_curr_location =
+      //     LCSFactory::PreProcessor(
+      //       plant_, *context_, contact_pairs_,
+      //       sampling_c3_options_.resolve_contacts_to_list[
+      //         sampling_c3_options_.num_contacts_index_for_curr_location],
+      //       c3_options_.num_friction_directions,
+      //       sampling_c3_options_.num_contacts[
+      //         sampling_c3_options_.num_contacts_index_for_curr_location],
+      //       verbose_);
+      //   test_system =
+      //     solvers::LCSFactory::LinearizePlantToLCS(
+      //       plant_, *context_, plant_ad_, *context_ad_,
+      //       resolved_contact_pairs_for_curr_location,
+      //       c3_options_.num_friction_directions,
+      //       sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_curr_location],
+      //       dt_, N_, contact_model_);
+      //
+      //   G = G_for_curr_location_;
+      //   U = U_for_curr_location_;
+      //   int n_lambda = 2 * c3_options_.num_friction_directions *
+      //     sampling_c3_options_.num_contacts[
+      //       sampling_c3_options_.num_contacts_index_for_curr_location];
+      //   delta = std::vector<Eigen::VectorXd>(
+      //     N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
+      //   w = std::vector<Eigen::VectorXd>(
+      //     N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
+      // }
 
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
@@ -1108,7 +1118,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     bool updated_pos_or_rot = false;
     bool reset_progress_cost_buffer = false;
 
-    Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(3,3,7,7);
+    int n_q_franka;
+    if (sampling_c3_options_.with_z) {
+      n_q_franka = 3;
+    }else {
+      n_q_franka = 2;
+    }
+
+    Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(n_q_franka,n_q_franka,n_q_franka+4,n_q_franka+4);
     Eigen::VectorXd pos_and_rot_error_vec = x_lcs_curr.segment(3, 7) -
       x_lcs_final_des.get_value().segment(3, 7);
     double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
@@ -1535,11 +1552,23 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
-  // Set up matrices for LCMTrajectory object.
-  for (int i = 0; i < N_; i++) {
-    knots.col(i) = x_sol[i];
-    timestamps[i] = t + filtered_solve_time_ + (i)*dt_;
+  if (sampling_c3_options_.with_z) {
+    for (int i = 0; i < N_; i++) {
+      knots.col(i) = x_sol[i];
+      timestamps[i] = t + filtered_solve_time_ + (i)*dt_;
+    }
+  }else {
+    for (int i = 0; i < N_; i++) {
+      //add z back
+      knots.col(i).head(2) = x_sol[i].head(2);
+      knots.col(i)[2] = sampling_c3_options_.c3_height;
+      knots.col(i).segment(3,9) = x_sol[i].segment(2,9);
+      knots.col(i)[12] = 0;
+      knots.col(i).segment(13,6) = x_sol[i].segment(11,6);
+      timestamps[i] = t + filtered_solve_time_ + (i)*dt_;
+    }
   }
+  // Set up matrices for LCMTrajectory object.
 
   if(is_doing_c3_){
     if (filtered_solve_time_ < 2*dt_ &&
@@ -1570,8 +1599,19 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   // Add end effector force target to LCM Trajectory.
   // In c3 mode, the end effector forces should match the solved c3 inputs.
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
-  for (int i = 0; i < N_; i++) {
-    force_samples.col(i) = u_sol[i];
+
+  if (sampling_c3_options_.with_z) {
+    for (int i = 0; i < N_; i++) {
+      force_samples.col(i) = u_sol[i];
+    }
+
+  }else {
+    for (int i = 0; i < N_; i++) {
+      force_samples.col(i).head(2) = u_sol[i];
+      //hard coded it. equal to the weight of the end_effector_simple
+      force_samples.col(i)[2] = 0.55917;
+    }
+
   }
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
@@ -2164,6 +2204,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     dairlib::lcmt_timestamped_saved_traj* output) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
+  //output full dimension
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
   c3_solution->x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution->lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
@@ -2173,11 +2214,27 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    if (sampling_c3_options_.with_z) {
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    }else {
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) =
+      z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+    }
   }
 
 
@@ -2226,11 +2283,27 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    if (sampling_c3_options_.with_z) {
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    }else {
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) =
+      z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+    }
   }
 
   MatrixXd knots = MatrixXd::Zero(6, N_);
@@ -2270,15 +2343,34 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
 
   auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    if (sampling_c3_options_.with_z) {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    }else {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+
+    }
+
   }
 }
-
+//TODO what is the use of this?
 void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
@@ -2334,22 +2426,33 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution->time_vector_ = VectorXf::Zero(N_);
 
-  for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
-  }
 
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    if (sampling_c3_options_.with_z) {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    }else {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+
+    }
+
   }
 
 
@@ -2397,12 +2500,31 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
   c3_solution->time_vector_ = VectorXf::Zero(N_);
   
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    if (sampling_c3_options_.with_z) {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    }else {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+
+    }
+
   }
 
   MatrixXd knots = MatrixXd::Zero(6, N_);
@@ -2441,14 +2563,33 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
 double t = context.get_discrete_state(plan_start_time_index_)[0];
 
 auto z_sol = c3_best_plan_->GetFullSolution();
-for (int i = 0; i < N_; i++) {
-  c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
-  c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-  c3_solution->lambda_sol_.col(i) =
-      z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-  c3_solution->u_sol_.col(i) =
-      z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
-}
+  for (int i = 0; i < N_; i++) {
+    if (sampling_c3_options_.with_z) {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+      c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i) =
+          z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
+    }else {
+      c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+
+      c3_solution->x_sol_.col(i).head(2) = z_sol[i].head(2).cast<float>();
+      c3_solution->x_sol_.col(i)[2] = (float)sampling_c3_options_.c3_height;
+      c3_solution->x_sol_.col(i).segment(3,9) = z_sol[i].segment(2,9).cast<float>();
+      c3_solution->x_sol_.col(i)[12] = (float)0;
+      c3_solution->x_sol_.col(i).segment(13,6) = z_sol[i].segment(11,6).cast<float>();
+
+      c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_c3_, n_lambda_).cast<float>();
+      c3_solution->u_sol_.col(i).head(2) =
+          z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
+
+      c3_solution->u_sol_.col(i)[2] = 0.55917;
+
+    }
+
+  }
 }
 
 void SamplingC3Controller::OutputC3IntermediatesBestPlan(
