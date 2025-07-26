@@ -1,5 +1,5 @@
 #include "solvers/c3.h"
-
+#include <drake/common/yaml/yaml_io.h>
 #include <chrono>
 #include <iostream>
 
@@ -12,6 +12,7 @@
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
 namespace dairlib {
 namespace solvers {
@@ -94,6 +95,17 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     }
   }
 
+
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
+
+
+
   auto Dn = D_.at(0).norm();
   auto An = A_.at(0).norm();
   AnDn_ = An / Dn;
@@ -104,6 +116,8 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     c_.at(i) /= AnDn_;
     H_.at(i) /= AnDn_;
   }
+
+  //right now just hard code it to test
 
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -155,14 +169,16 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
 
-  // Adding constraint for x[2] corresponding to end effector z to always be 
+  // Adding constraint for x[2] corresponding to end effector z to always be
   // above the ground at every time step.
   // Impose constraint for timestep 1 and beyond to ensure that the plan doesn't go below the safe threshold/ground
   // but allow the 0th timestep to be where the ee currently is in order to not invalidate the x_[0] == x0 constraint.
   for (int i = 1; i < N_; i++) {
     // WARNING!!! The x_.at(i)[2] == 0.005 constraint is hardcoded for the T example. The jack example needs line 166
     // to be commented and line 165 to be uncommented.
-    prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
+    if (sampling_c3_options.with_z) {
+      prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
+    }
     // prog_.AddLinearConstraint(x_.at(i)[2] == 0.005);
   }
 
@@ -269,6 +285,9 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 
 // TODO: @Bibit can you confirm that this initialization for delta is correct?
 void C3::Solve(const VectorXd& x0, bool verbose) {
+
+  flag_c3 = true;
+
   auto start = std::chrono::high_resolution_clock::now();
 
   VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
@@ -292,7 +311,13 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);    
+    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
+
+    if (flag_c3 == false) {
+      break;
+
+    }
+
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -300,7 +325,10 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+
+  if (flag_c3 == true) {
+    vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  }
 
   if(verbose){
     std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
@@ -340,7 +368,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
   zfin_ = *z_sol_;
-  
+
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   solve_time_ =
@@ -349,16 +377,27 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 }
 
 // This function relies on the previously computed zfin_ from the Solve function.
-// Calculate the C3 cost and feasible trajectory associated with applying a 
+// Calculate the C3 cost and feasible trajectory associated with applying a
 // provided control input sequence to a system at a provided initial state.
 // Or, use the zfin_ trajectory if cost_type is false.
 std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
   // Extract the locally stored state and control sequences.
+
+  //right now just hard code it
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
+
+
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
+  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_));
 
   // If cost_type is 0, simulate the dynamics to get the
-  // full state trajectory. 
+  // full state trajectory.
   if (cost_type == 0){
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
@@ -371,6 +410,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
       }
     }
   }
+
+
   else if(cost_type == 1){
     // If cost_type is 1, use the provided zfin_ trajectory for the full state.
     for (int i = 0; i < N_; i++){
@@ -387,7 +428,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     }
   }
   else if(cost_type == 2){
-    // If cost_type is 2, use z_fin for ee trajectory but simulate forward for 
+    // If cost_type is 2, use z_fin for ee trajectory but simulate forward for
     // the object trajectory.
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
@@ -405,30 +446,45 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
       // This is replacing the XX[N_] state of the end effector to a state
       // simulated from the last control input in UU and last end effector state
-      // from the C3 plan. This is different from what is already set in the 
+      // from the C3 plan. This is different from what is already set in the
       // previous loop because the [N_-1] states of the end effector are not
       // the same.
       if(i == N_-1){
-        if(LCS_for_cost_computation_){
+
+        //TODO need to change calcost shape
+        if (sampling_c3_options.with_z){
+          if(LCS_for_cost_computation_){
           XX[i+1].segment(0,3) = LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,3);
         }
         else{
           XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
         }
+        }else {
+          if(LCS_for_cost_computation_){
+            XX[i+1].segment(0,2) = LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,2);
+          }
+          else{
+            XX[i+1].segment(0,2) = lcs_.Simulate(XX[i], UU[i]).segment(0,2);
+          }
+
+
+        }
+
+
       }
     }
   }
   else if(cost_type == 3){
-    // // If cost_type is 3, try to emulate the real cost of the system associated 
-    // // not only applying the u from the zfin_[0] but also the u associated with 
+    // // If cost_type is 3, try to emulate the real cost of the system associated
+    // // not only applying the u from the zfin_[0] but also the u associated with
     // // tracking the position plan over time.
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 3"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose); 
+    std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose);
   }
   else if(cost_type == 4){
-    // This is same as cost type 3 except the end effector position and 
+    // This is same as cost type 3 except the end effector position and
     // velocity plans are replaced with the plan from C3 at the end.
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 4"<<std::endl;
@@ -437,17 +493,29 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
 
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
-    for(int i = 0; i < N_; i++){
-      XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      XX[i].segment(10,3) = zfin_[i].segment(10,3);
-      if(i == N_-1){
-        XX[i+1].segment(0,3) = zfin_[i].segment(0,3);
-        XX[i+1].segment(10,3) = zfin_[i].segment(10,3);
+    if (sampling_c3_options.with_z) {
+      for(int i = 0; i < N_; i++) {
+        XX[i].segment(0,3) = zfin_[i].segment(0,3);
+        XX[i].segment(10,3) = zfin_[i].segment(10,3);
+        if(i == N_-1){
+          XX[i+1].segment(0,3) = zfin_[i].segment(0,3);
+          XX[i+1].segment(10,3) = zfin_[i].segment(10,3);
+        }
+      }
+    }else {
+      for(int i = 0; i < N_; i++) {
+        XX[i].segment(0,2) = zfin_[i].segment(0,2);
+        XX[i].segment(9,2) = zfin_[i].segment(9,2);
+        if(i == N_-1){
+          XX[i+1].segment(0,2) = zfin_[i].segment(0,2);
+          XX[i+1].segment(9,2) = zfin_[i].segment(9,2);
+        }
       }
     }
+
   }
   else if (cost_type == 5){
-  // This is same as cost type 3 and 4 except we later include only object terms in the final cost. 
+  // This is same as cost type 3 and 4 except we later include only object terms in the final cost.
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 5"<<std::endl;
     }
@@ -476,8 +544,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   double cost_contrib_obj_ang_vel = 0;
   double cost_contrib_obj_vel = 0;
 
-  for (int i = 0; i < N_; i++){
-    // Calculate the error and cost contributions for each state.
+  if (sampling_c3_options.with_z) {
+    for (int i = 0; i < N_; i++){
+      // Calculate the error and cost contributions for each state.
       //ee_pos
       error_contrib_ee_pos += (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*(XX[i].segment(0,3) - x_desired_[i].segment(0,3));
       cost_contrib_ee_pos += (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*
@@ -503,32 +572,90 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
       cost_contrib_obj_vel += (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
         Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3));
 
-    cost = cost + 
-      (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
-      UU[i].transpose()*R_eff.at(i)*UU[i];
-  }
-  cost = cost + 
-    (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+      cost = cost +
+        (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) +
+        UU[i].transpose()*R_eff.at(i)*UU[i];
+    }
+        cost = cost +
+      (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
 
-  error_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
-  error_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
-  error_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
-  error_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
-  error_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
-  error_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+    error_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
+    error_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
+    error_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
+    error_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
+    error_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
+    error_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
 
-  cost_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*
-    Q_eff.at(N_).block(0,0,3,3)*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
-  cost_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*
-    Q_eff.at(N_).block(3,3,4,4)*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
-  cost_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*
-    Q_eff.at(N_).block(7,7,3,3)*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
-  cost_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*
-    Q_eff.at(N_).block(10,10,3,3)*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
-  cost_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*
-    Q_eff.at(N_).block(13,13,3,3)*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
-  cost_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*
-    Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+    cost_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*
+      Q_eff.at(N_).block(0,0,3,3)*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
+    cost_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*
+      Q_eff.at(N_).block(3,3,4,4)*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
+    cost_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*
+      Q_eff.at(N_).block(7,7,3,3)*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
+    cost_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*
+      Q_eff.at(N_).block(10,10,3,3)*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
+    cost_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*
+      Q_eff.at(N_).block(13,13,3,3)*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
+    cost_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*
+      Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+
+
+  }else {
+    for (int i = 0; i < N_; i++){
+          // Calculate the error and cost contributions for each state.
+          //ee_pos
+          error_contrib_ee_pos += (XX[i].segment(0,2) - x_desired_[i].segment(0,2)).transpose()*(XX[i].segment(0,2) - x_desired_[i].segment(0,2));
+          cost_contrib_ee_pos += (XX[i].segment(0,2) - x_desired_[i].segment(0,2)).transpose()*
+            Q_eff.at(i).block(0,0,2,2)*(XX[i].segment(0,2) - x_desired_[i].segment(0,2));
+          //obj_orientation
+          error_contrib_obj_orientation += (XX[i].segment(2,4) - x_desired_[i].segment(2,4)).transpose()*(XX[i].segment(2,4) - x_desired_[i].segment(2,4));
+          cost_contrib_obj_orientation += (XX[i].segment(2,4) - x_desired_[i].segment(2,4)).transpose()*
+            Q_eff.at(i).block(2,2,4,4)*(XX[i].segment(2,4) - x_desired_[i].segment(2,4));
+          //obj_pos
+          error_contrib_obj_pos += (XX[i].segment(6,3) - x_desired_[i].segment(6,3)).transpose()*(XX[i].segment(6,3) - x_desired_[i].segment(6,3));
+          cost_contrib_obj_pos += (XX[i].segment(6,3) - x_desired_[i].segment(6,3)).transpose()*
+            Q_eff.at(i).block(6,6,3,3)*(XX[i].segment(6,3) - x_desired_[i].segment(6,3));
+          //ee_vel
+          error_contrib_ee_vel += (XX[i].segment(9,2) - x_desired_[i].segment(9,2)).transpose()*(XX[i].segment(9,2) - x_desired_[i].segment(9,2));
+          cost_contrib_ee_vel += (XX[i].segment(9,2) - x_desired_[i].segment(9,2)).transpose()*
+            Q_eff.at(i).block(9,9,2,2)*(XX[i].segment(9,2) - x_desired_[i].segment(9,2));
+          //obj_ang_vel
+          error_contrib_obj_ang_vel += (XX[i].segment(11,3) - x_desired_[i].segment(11,3)).transpose()*(XX[i].segment(11,3) - x_desired_[i].segment(11,3));
+          cost_contrib_obj_ang_vel += (XX[i].segment(11,3) - x_desired_[i].segment(11,3)).transpose()*
+            Q_eff.at(i).block(11,11,3,3)*(XX[i].segment(11,3) - x_desired_[i].segment(11,3));
+          //obj_vel
+          error_contrib_obj_vel += (XX[i].segment(14,3) - x_desired_[i].segment(14,3)).transpose()*(XX[i].segment(14,3) - x_desired_[i].segment(14,3));
+          cost_contrib_obj_vel += (XX[i].segment(14,3) - x_desired_[i].segment(14,3)).transpose()*
+            Q_eff.at(i).block(14,14,3,3)*(XX[i].segment(14,3) - x_desired_[i].segment(14,3));
+
+          cost = cost +
+            (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) +
+            UU[i].transpose()*R_eff.at(i)*UU[i];
+        }
+
+              cost = cost +
+        (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+
+      error_contrib_ee_pos += (XX[N_].segment(0,2) - x_desired_[N_].segment(0,2)).transpose()*(XX[N_].segment(0,2) - x_desired_[N_].segment(0,2));
+      error_contrib_obj_orientation += (XX[N_].segment(2,4) - x_desired_[N_].segment(2,4)).transpose()*(XX[N_].segment(2,4) - x_desired_[N_].segment(2,4));
+      error_contrib_obj_pos += (XX[N_].segment(6,3) - x_desired_[N_].segment(6,3)).transpose()*(XX[N_].segment(6,3) - x_desired_[N_].segment(6,3));
+      error_contrib_ee_vel += (XX[N_].segment(9,2) - x_desired_[N_].segment(9,2)).transpose()*(XX[N_].segment(9,2) - x_desired_[N_].segment(9,2));
+      error_contrib_obj_ang_vel += (XX[N_].segment(11,3) - x_desired_[N_].segment(11,3)).transpose()*(XX[N_].segment(11,3) - x_desired_[N_].segment(11,3));
+      error_contrib_obj_vel += (XX[N_].segment(14,3) - x_desired_[N_].segment(14,3)).transpose()*(XX[N_].segment(14,3) - x_desired_[N_].segment(14,3));
+
+      cost_contrib_ee_pos += (XX[N_].segment(0,2) - x_desired_[N_].segment(0,2)).transpose()*
+        Q_eff.at(N_).block(0,0,2,2)*(XX[N_].segment(0,2) - x_desired_[N_].segment(0,2));
+      cost_contrib_obj_orientation += (XX[N_].segment(2,4) - x_desired_[N_].segment(2,4)).transpose()*
+        Q_eff.at(N_).block(2,2,4,4)*(XX[N_].segment(2,4) - x_desired_[N_].segment(2,4));
+      cost_contrib_obj_pos += (XX[N_].segment(6,3) - x_desired_[N_].segment(6,3)).transpose()*
+        Q_eff.at(N_).block(6,6,3,3)*(XX[N_].segment(6,3) - x_desired_[N_].segment(6,3));
+      cost_contrib_ee_vel += (XX[N_].segment(9,2) - x_desired_[N_].segment(9,2)).transpose()*
+        Q_eff.at(N_).block(9,9,2,2)*(XX[N_].segment(9,2) - x_desired_[N_].segment(9,2));
+      cost_contrib_obj_ang_vel += (XX[N_].segment(11,3) - x_desired_[N_].segment(11,3)).transpose()*
+        Q_eff.at(N_).block(11,11,3,3)*(XX[N_].segment(11,3) - x_desired_[N_].segment(11,3));
+      cost_contrib_obj_vel += (XX[N_].segment(14,3) - x_desired_[N_].segment(14,3)).transpose()*
+        Q_eff.at(N_).block(14,14,3,3)*(XX[N_].segment(14,3) - x_desired_[N_].segment(14,3));
+      }
 
   if(verbose || print_cost_breakdown){
     std::cout<<"Error breakdown"<<std::endl;
@@ -563,11 +690,20 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
 }
 
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::SimulatePDControl(bool force_tracking_disabled, bool verbose) const{
-    // used to store the solutions from C3.
-    vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
 
-    // Set the UU and XX values to the z_fin values first for the emulated PD 
+  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
+
+
+  // used to store the solutions from C3.
+    vector<VectorXd> UU(N_, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_));
+
+    // Set the UU and XX values to the z_fin values first for the emulated PD
     // controller to have for error computation in place of all 0s.
     if(verbose){
       std::cout<<"\nSIMULATING PD CONTROL"<<std::endl;
@@ -591,23 +727,52 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
     std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
 
     // Set the PD gains for the emulated tracking controller.
-    Eigen::MatrixXd Kp = options_.Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
-    Eigen::MatrixXd Kd = options_.Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+
+
+  Eigen::MatrixXd Kp;
+  Eigen::MatrixXd Kd;
+
+    if (sampling_c3_options.with_z) {
+      Kp.resize(3,3);
+      Kd.resize(3,3);
+      Kp = options_.Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+      Kd = options_.Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+
+    }else {
+      Kp.resize(2,2);
+      Kd.resize(2,2);
+      Kp = options_.Kp_for_cost_type_3*Eigen::MatrixXd::Identity(2,2);
+      Kd = options_.Kd_for_cost_type_3*Eigen::MatrixXd::Identity(2,2);
+
+    }
 
     XX_new[0] = zfin_[0].segment(0, n_);
     // This will just be the original u from zfin_[0] for the first time step.
-    // if the radio input is true, then the u will only emulate position tracking 
+    // if the radio input is true, then the u will only emulate position tracking
     // using the PD controller.
     for (int i = 0; i < N_; i++){
+
+      if (sampling_c3_options.with_z) {
         if(force_tracking_disabled){
-          UU_new[i] =  Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
+          UU_new[i] =  Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
                        Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         }
-        else{
-          UU_new[i] = UU[i] + 
-            Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
+        else {
+          UU_new[i] = UU[i] +
+            Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
             Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         }
+      }else {
+        if(force_tracking_disabled){
+          UU_new[i] =  Kp*(XX[i].segment(0, 2) - XX_new[i].segment(0, 2)) +
+                       Kd*(XX[i].segment(9, 2) - XX_new[i].segment(9, 2));
+        }
+        else {
+          UU_new[i] = UU[i] +
+            Kp*(XX[i].segment(0, 2) - XX_new[i].segment(0, 2)) +
+            Kd*(XX[i].segment(9, 2) - XX_new[i].segment(9, 2));
+        }
+      }
         if(LCS_for_cost_computation_){
 
           if(verbose){
@@ -676,12 +841,24 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
-  if(x0[2] < options_.ee_z_state_min){
-    std::cout<<x0.segment(0,3).transpose()<<std::endl;
-    std::cout<<"CAUTION: Initial state (curr or sample) is below the min z"<<
-    " height ("<<x0[2] <<" < "<<options_.ee_z_state_min <<"). C3 plan will "<<
-    "have the z go up suddenly in the first step of the plan."<<std::endl;
+
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
+
+  if (sampling_c3_options.with_z) {
+    if(x0[2] < options_.ee_z_state_min){
+      std::cout<<x0.segment(0,3).transpose()<<std::endl;
+      std::cout<<"CAUTION: Initial state (curr or sample) is below the min z"<<
+      " height ("<<x0[2] <<" < "<<options_.ee_z_state_min <<"). C3 plan will "<<
+      "have the z go up suddenly in the first step of the plan."<<std::endl;
+    }
   }
+
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (h_is_zero_ == 1) {

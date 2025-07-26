@@ -113,7 +113,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   *output_lcs = LCSFactory::LinearizePlantToLCS(
       plant_, context_, plant_ad_, context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N, contact_model);
+      c3_options_.N,contact_model);
 }
 
 void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<double>& context,

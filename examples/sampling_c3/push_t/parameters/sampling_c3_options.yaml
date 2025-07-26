@@ -205,4 +205,4 @@ r_vector: [0.01, 0.01, 0.01]
 r_vector_without_z: [0.01, 0.01]
 
 with_z: false
-c3_height: 0.005
+c3_height: 0.004

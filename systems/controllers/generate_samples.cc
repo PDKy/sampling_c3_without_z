@@ -70,7 +70,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       do{
         candidate_states[i] = generate_random_sample_location_on_circle(
           n_q, n_v, x_lcs, sampling_params.sampling_radius,
-          sampling_params.sampling_height
+          sampling_params.sampling_height,
+          sampling_c3_options
         );
       } while(sampling_params.filter_samples_for_safety && 
         !is_sample_within_workspace(candidate_states[i], c3_options));
@@ -200,7 +201,9 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
     const double& sampling_radius,
-    const double& sampling_height){
+    const double& sampling_height,
+    const SamplingC3Options sampling_c3_options
+    ){
 
   // Pull out the q and v from the LCS state.  The end effector location and
   // velocity of this state will be changed for the sample.
@@ -233,7 +236,7 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   candidate_state << test_q.head(3), x_lcs.segment(3, n_q - 3), test_v;
-
+  candidate_state[2] = sampling_c3_options.c3_height;
   return candidate_state;
 }
 
@@ -370,7 +373,9 @@ Eigen::VectorXd generate_sample_on_grid(
     // Once we find a sample in collision, project it to the surface of the object.
     Eigen::VectorXd projected_state = project_to_surface(candidate_state, min_distance_index, sampling_params, plant, context, contact_geoms);
 
-    projected_state[2] = sampling_c3_options.c3_height;
+    //if (!(sampling_c3_options.with_z)) {
+      //projected_state[2] = sampling_c3_options.c3_height;
+    //}
 
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, projected_state);
     if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index)){

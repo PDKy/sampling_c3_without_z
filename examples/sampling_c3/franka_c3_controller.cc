@@ -150,7 +150,8 @@ int DoMain(int argc, char* argv[]) {
   /// adding the jack model (TODO: Change to object instead of jack)
   MultibodyPlant<double> plant_jack(0.0);
   Parser parser_jack(&plant_jack, nullptr);
-  parser_jack.AddModels(controller_params.jack_model);
+  drake::multibody::ModelInstanceIndex object_index =
+  parser_jack.AddModels(controller_params.jack_model)[0];
   plant_jack.Finalize();
   auto jack_context = plant_jack.CreateDefaultContext();
 
@@ -653,7 +654,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka,franka_index);
   auto object_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_jack,object_index);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));

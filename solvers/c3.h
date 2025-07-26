@@ -136,7 +136,10 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
-  
+
+  bool flag_c3 = true;
+
+
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);

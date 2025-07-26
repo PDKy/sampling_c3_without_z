@@ -12,6 +12,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
   //  env_.set("LogToConsole", "0");
+
   env_.set("OutputFlag", "0");
   env_.set("Threads", "5");
   env_.start();
@@ -100,8 +101,28 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.addConstr(cexpr2 + c(i) >= 0);
     model.addConstr(cexpr2 + c(i) <= M * binary[i]);
   }
+  model.set(GRB_DoubleParam_TimeLimit, 0.5);
+  //model.optimize();
+  try {
 
-  model.optimize();
+    model.optimize();
+  }
+  catch (GRBException& e) {
+    std::cerr << "Gurobi error (code " << e.getErrorCode()
+              << "): " << e.getMessage() << std::endl;
+    // decide how to recover: return a default, rethrow, etc.
+    return VectorXd::Zero(n_ + m_ + k_);
+  }
+
+  int status = model.get(GRB_IntAttr_Status);
+  if (status != GRB_OPTIMAL) {
+    std::cerr << "Optimization did not succeed (status = " << status << ").\n";
+    // you can also distinguish other statuses:
+    //   GRB_INFEASIBLE, GRB_UNBOUNDED, GRB_INF_OR_UNBD, GRB_TIME_LIMIT, etc.
+    flag_c3 = false;
+    //return VectorXd::Zero(n_ + m_ + k_);
+    return delta_c;
+  }
 
   VectorXd delta_kc(n_ + m_ + k_);
   VectorXd binaryc(m_);

@@ -358,9 +358,11 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_curr_plan_channel, lcm));
+
   auto trajectory_sub_force_curr =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_curr_channel, lcm));
+
   auto dynamically_feasible_trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_plan_channel, lcm));
@@ -381,8 +383,8 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, lcm));
 
-	// This system subscribes to the lcmt_saved_traj message containing sample 
-	// locations. 
+	// This system subscribes to the lcmt_saved_traj message containing sample
+	// locations.
   auto sample_location_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, lcm));
@@ -507,8 +509,8 @@ int do_main(int argc, char* argv[]) {
                     object_pose_drawer_curr->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_pose_drawer_curr->get_input_port_trajectory());
-    
-    std::string visualizer_df_curr_sample_end_effector_model = 
+
+    std::string visualizer_df_curr_sample_end_effector_model =
             WriteTempModelWithColorChange(
                 FindResourceOrThrow(sim_params.end_effector_visualization_model),
                 "0.5 1.0 0.5 1.0", "curr_sample_end_effector_model");
@@ -520,8 +522,8 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(
         dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
         dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
-    
-    
+
+
     std::string visualizer_df_curr_sample_traj_jack_model = sim_params.jack_model;
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_curr_plan",
@@ -542,7 +544,7 @@ int do_main(int argc, char* argv[]) {
         meshcat, "plans/best_planned",
         FindResourceOrThrow(visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
-    
+
     std::string visualizer_best_sample_end_effector_model = WriteTempModelWithColorChange(
         FindResourceOrThrow(sim_params.end_effector_visualization_model),
         "1 0.64 0 1", "best_sample_end_effector_model");
@@ -556,7 +558,7 @@ int do_main(int argc, char* argv[]) {
                     object_pose_drawer_best->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_pose_drawer_best->get_input_port_trajectory());
-    
+
     std::string visualizer_df_best_sample_traj_jack_model =
             WriteTempModelWithColorChange(
                 FindResourceOrThrow(sim_params.jack_model),
@@ -573,10 +575,10 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_sample_locations){
 		// This drawer object is used to visualize the sample locations.
-		// This isn't designed to be used for visualizing sample locations but we 
-		// use it for that purpose since the sample_location_sender sends out an 
+		// This isn't designed to be used for visualizing sample locations but we
+		// use it for that purpose since the sample_location_sender sends out an
 		// lcmt_timestamped_traj with a trajectory by the name sample_locations.
-		// The last argument "end_effector_orientation_target" is a dummy argument 
+		// The last argument "end_effector_orientation_target" is a dummy argument
 		// here that is not used.
     int from_buffer = 0;
     if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
@@ -588,7 +590,7 @@ int do_main(int argc, char* argv[]) {
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "samples_",
         visualizer_sample_locations_model,
-        "sample_locations", "end_effector_orientation_target", 
+        "sample_locations", "end_effector_orientation_target",
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
             sampling_params.num_additional_samples_repos + 1) + 1, false);
 
@@ -684,7 +686,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/visualizer_diagram");
+  DrawAndSaveDiagramGraph(*diagram, "/home/dair/opt/sampling_based_c3/dairlib/examples/sampling_c3/diagram/" + FLAGS_demo_name + "/visualizer_diagram");
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

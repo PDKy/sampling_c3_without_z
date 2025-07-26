@@ -97,11 +97,15 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input, bool
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
 
-  auto flag = LCPSolver.SolveLcpLemkeRegularized(
+
+  auto flag = LCPSolver.SolveLcpLemke(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
 
   if (flag == 0) {
     std::cout << "LCP solver failed" << std::endl;
+    //std::cout << "wrong value" << E_[0] * x_init +c_[0]<<std::endl;
+
+    //std::cerr << "dis" << E_[0] * x_init + c_[0] + H_[0] * input << std::endl;
     return x_init;
   }
   // update
@@ -111,6 +115,8 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input, bool
   }
   return x_final;
 }
+
+
 
 }  // namespace solvers
 }  // namespace dairlib

@@ -206,6 +206,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
+
   solvers::LCS CreatePlaceholderLCS() const;
 
   drake::systems::EventStatus ComputePlan(
@@ -405,6 +406,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_lambda_;
   int n_u_;
 
+  int n_q_franka_;
   int n_u_c3_;
   int max_num_samples_;
   mutable double dt_ = 0.1;
@@ -511,6 +513,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable PursuedTargetSource pursued_target_source_ = TARGET_SOURCE_NONE;
 
 };
+
+
 
 }  // namespace systems
 }  // namespace dairlib

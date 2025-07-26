@@ -35,8 +35,14 @@ LCS LCSFactory::LinearizePlantToLCS(
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, ContactModel contact_model) {
+
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
+  bool with_z;
+  if (n_u == 2) {
+    with_z = false;
+
+  }
 
   int n_contacts = contact_geoms.size();
 
@@ -94,25 +100,39 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
 
+  if (!with_z) {
+    J_t.resize(2 * (n_contacts-1) * num_friction_directions + num_friction_directions, n_v);
+
+  }
+
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
         contact_geoms[i]);
-    if (num_friction_directions == 1) {
+    if (num_friction_directions == 1 || (!(with_z) && i ==0)) {
       Eigen::Vector3d planar_normal;
+      int num_direction = 1;
+
       planar_normal << 0, 1, 0;
       auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
       phi(i) = phi_i;
       J_n.row(i) = J_i.row(0);
-      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+      J_t.block(2 * i * num_direction, 0, 2 * num_direction,
+                n_v) = J_i.block(1, 0, 2 * num_direction, n_v);
     } else {
       auto [phi_i, J_i] =
           collider.EvalPolytope(context, num_friction_directions);
       phi(i) = phi_i;
       J_n.row(i) = J_i.row(0);
-      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+      if (with_z) {
+        J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                  n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+      }else {
+        J_t.block(2 * i * num_friction_directions-2, 0, 2 * num_friction_directions,
+          n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+
+
+      }
     }
 
     // J_i is 3 x n_v
@@ -148,17 +168,48 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   MatrixXd E_t =
       MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
+
+
+  if (!with_z) {
+    E_t.resize(n_contacts, 2 * n_contacts * num_friction_directions - 2);
+  }
+
   for (int i = 0; i < n_contacts; i++) {
-    E_t.block(i, i * (2 * num_friction_directions), 1,
-              2 * num_friction_directions) =
+
+    if (with_z) {
+      E_t.block(i, i * (2 * num_friction_directions), 1,
+                2 * num_friction_directions) =
+          MatrixXd::Ones(1, 2 * num_friction_directions);
+
+    }else {
+      if (i == 0) {
+        int temp_num_friction_directions = 1;
+
+        E_t.block(i, i * (2 * temp_num_friction_directions), 1,
+          2 * temp_num_friction_directions) =
+        MatrixXd::Ones(1, 2 * temp_num_friction_directions);
+      }else {
+        E_t.block(i, i * (2 * num_friction_directions)-2, 1,
+          2 * num_friction_directions) =
         MatrixXd::Ones(1, 2 * num_friction_directions);
+
+      }
+
+    }
+
+
   }
 
   int n_lambda = 0;
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions;
   } else {
-    n_lambda = 2 * n_contacts * num_friction_directions;
+    if (with_z) {
+      n_lambda = 2 * n_contacts * num_friction_directions;
+    }else {
+      n_lambda = 2 * n_contacts * num_friction_directions -2;
+    }
+
   }
 
   // Matrices with contact variables
@@ -238,9 +289,26 @@ LCS LCSFactory::LinearizePlantToLCS(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
     for (int i = 0; i < mu_vec.rows(); i++) {
-      anitescu_mu_vec.segment((2 * num_friction_directions) * i,
-                              2 * num_friction_directions) =
+
+      if (with_z) {
+        anitescu_mu_vec.segment((2 * num_friction_directions) * i,
+                                2 * num_friction_directions) =
+            mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
+
+      }else {
+        if (i == 0) {
+          int tem_num_friction_directions = 1;
+          anitescu_mu_vec.segment((2 * tem_num_friction_directions) * i,
+                        2 * tem_num_friction_directions) =
+          mu_vec(i) * VectorXd::Ones(2 * tem_num_friction_directions);
+        }else {
+          anitescu_mu_vec.segment((2 * num_friction_directions) * i -2,
+                          2 * num_friction_directions) =
           mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
+
+        }
+      }
+
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     // Constructing friction bases

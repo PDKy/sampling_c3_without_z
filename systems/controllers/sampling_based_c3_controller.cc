@@ -106,6 +106,13 @@ SamplingC3Controller::SamplingC3Controller(
 
   n_x_c3_ = n_q_c3_ + n_v_c3_;
 
+  if (sampling_c3_options_.with_z) {
+    n_q_franka_ = 3;
+  }else {
+    n_q_franka_= 2;
+
+  }
+
 
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
@@ -115,12 +122,23 @@ SamplingC3Controller::SamplingC3Controller(
         2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
   } else if (c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ =
-        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
+
+    if (sampling_c3_options_.with_z) {
+      n_lambda_ =
+    2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
+    }else {
+      n_lambda_ =
+      2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index]-2;
+
+    }
+
   } else {
     std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
+
+
+  std::cerr << "number of lambda" << n_lambda_ << std::endl;
 
   // Creates placeholder lcs to construct base C3 problem
   // Placeholder LCS will have correct size as it's already determined by the
@@ -702,14 +720,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
       quat_desired * quat_desired.transpose();
-    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows()
-              == Q_quaternion_dependent_cost.cols()
-              == Q_quaternion_dependent_regularizer_part_2.rows()
-              == Q_quaternion_dependent_regularizer_part_2.cols()
-              == 4);
+    //DRAKE_ASSERT(Q_quaternion_dependent_cost.rows()
+              //== Q_quaternion_dependent_cost.cols()
+              //== Q_quaternion_dependent_regularizer_part_2.rows()
+              //== Q_quaternion_dependent_regularizer_part_2.cols()
+              //== 4);
     double discount_factor = 1;
     for (int i = 0; i < N_+1; ++i) {
-      Q_[i].block(3,3,4,4) = discount_factor *
+      Q_[i].block(n_q_franka_,n_q_franka_,4,4) = discount_factor *
         sampling_c3_options_.q_quaternion_dependent_weight * (
           Q_quaternion_dependent_cost +
             Q_quaternion_dependent_regularizer_part_1 +
@@ -741,8 +759,57 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
   // Insert the current location at the beginning of the candidate states.
   //TODO may need to disable the x_lcs_curr
-  candidate_states.insert(candidate_states.begin(), x_lcs_curr);
+  //auto flag_coll = check_collision(x_lcs_curr,plant_,context_,contact_pairs_,sampling_params_,c3_options_);
+  //check
+  // Eigen::VectorXd x_curr_c3(n_x_);
+  //
+  // x_curr_c3.head(2) = x_lcs_curr.head(2);
+  // x_curr_c3[2] = (float)sampling_c3_options_.c3_height;
+  // x_curr_c3.segment(3,9) = x_lcs_curr.segment(2,9);
+  // x_curr_c3[12] = (float)0;
+  // x_curr_c3.segment(13,6) = x_lcs_curr.segment(11,6);
+  // //
+  // UpdateContext(x_curr_c3);
+
+  //UpdateContext(x_lcs_curr);
+    candidate_states.insert(candidate_states.begin(), x_lcs_curr);
+
   int num_total_samples = candidate_states.size();
+
+  std::cerr << "number_sample" << num_total_samples << std::endl;
+  std::cerr << "number lambda" << n_lambda_ << std::endl;
+
+// if (!is_doing_c3_) {
+//   std::vector<Eigen::VectorXd> candidate_states_temp;
+//   //Test used to check collsion
+//   for (int i=0;i<num_total_samples;i++) {
+//     Eigen::VectorXd candidate_states_c3(n_x_c3_);
+//     candidate_states_c3 << candidate_states[i].head(2),candidate_states[i].segment(3,9),candidate_states[i].segment(13,6);
+//     UpdateContext_c3(candidate_states_c3);
+//     std::vector<double> distances;
+//     //std::cerr << "i" << i << std::endl;
+//     bool skip_this_i = false;
+//     for (int j = 0; j < contact_pairs_c3_.at(0).size(); j++) {
+//       // Evaluate the distance for each pair
+//       SortedPair<GeometryId> pair {(contact_pairs_c3_.at(0)).at(j)};
+//       multibody::GeomGeomCollider collider(plant_c3_, pair);
+//
+//       auto [phi_i, J_i] = collider.EvalPolytope(*context_c3_, c3_options_.num_friction_directions);
+//       //std::cerr << "distance" << phi_i << std::endl;
+//       if (phi_i < 0) {
+//         skip_this_i = true;
+//         break;
+//       }
+//     }
+//     if (skip_this_i) {
+//       continue;
+//     }
+//     candidate_states_temp.push_back(candidate_states[i]);
+//   }
+//
+//   candidate_states = candidate_states_temp;
+//   num_total_samples = candidate_states.size();
+// }
 
   if (verbose_){
     std::cout << "num_total_samples: " << num_total_samples << std::endl;
@@ -789,6 +856,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index],
       dt_, N_, contact_model_);
 
+
+    std::cerr << "matrix D cols: " << lcs_object_sample.D_[0].cols() << "matrix D rows: " <<lcs_object_sample.D_[0].rows()  << std::endl;
+    std::cerr <<"matrix F cols" << lcs_object_sample.F_[0].cols()<< "matrix F rows" << lcs_object_sample.F_[0].rows()<< std::endl;
+
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
 
@@ -824,6 +895,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
   // Reset the context to the current lcs state.
   //UpdateContext(x_lcs_curr);
+
+
+
 
   if (verbose_) {
     // Print the LCS matrices for verbose inspection.
@@ -886,6 +960,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // if ((i == 0) &&
       //     (sampling_c3_options_.num_contacts_index_for_curr_location !=
       //       sampling_c3_options_.num_contacts_index)) {
+      //
+      //
+      //
       //   vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
       //   resolved_contact_pairs_for_curr_location =
       //     LCSFactory::PreProcessor(
@@ -941,36 +1018,94 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
       // test_c3_object->Solve(test_state, delta, w, verbose_);
+
+
       test_c3_object->Solve(test_state, verbose_);
+      //std::cerr << "i" << i << std::endl;
       // Get the state solution and calculate the cost.
       // This is taking in the xbox input to change the way we calculate cost
       // type 3 based on if force tracking is on or off.
       std::pair<double,std::vector<Eigen::VectorXd>> cost_trajectory_pair;
-      if(!crossed_cost_switching_threshold_){
-        if(i == 0){
-          cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type_position_tracking, radio_out->channel[11], radio_out->channel[7],
-            verbose_);
+
+      if (test_c3_object ->flag_c3 == true) {
+        if(!crossed_cost_switching_threshold_){
+          if(i == 0){
+            cost_trajectory_pair = test_c3_object->CalcCost(
+              sampling_params_.cost_type_position_tracking, radio_out->channel[11], radio_out->channel[7],
+              verbose_);
+          }
+          else{
+            cost_trajectory_pair = test_c3_object->CalcCost(
+              sampling_params_.cost_type_position_tracking, radio_out->channel[11], false,
+              verbose_);
+          }
         }
         else{
-          cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type_position_tracking, radio_out->channel[11], false,
-            verbose_);
+          if(i == 0){
+            cost_trajectory_pair = test_c3_object->CalcCost(
+              sampling_params_.cost_type, radio_out->channel[11], radio_out->channel[7], verbose_);
+          }
+          else{
+            cost_trajectory_pair = test_c3_object->CalcCost(
+              sampling_params_.cost_type, radio_out->channel[11], false, verbose_);
+          }
         }
-      }
-      else{
-        if(i == 0){
-          cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, radio_out->channel[11], radio_out->channel[7], verbose_);
-        }
-        else{
-          cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, radio_out->channel[11], false, verbose_);
-        }
+
+      }else {
+        cost_trajectory_pair.first = std::numeric_limits<double>::infinity();
       }
 
+
+
       double c3_cost = cost_trajectory_pair.first;
-      all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+      //all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+      if (sampling_c3_options_.with_z) {
+        all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+      }else {
+
+        // if (i==0 ) {
+        //   all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+        //
+        //   //std::cerr<< "current trajectory" << cost_trajectory_pair.second[0] << std::endl;
+        //
+        // }else {
+        //   std::vector<Eigen::VectorXd> XX_full(N_+1, VectorXd::Zero(n_x_));
+        //   std::vector<Eigen::VectorXd> XX_c3 = cost_trajectory_pair.second;
+        //
+        //   for (int j = 0; j < N_+1;j++) {
+        //     XX_full.at(j).head(2) = XX_c3.at(j).head(2);
+        //     XX_full.at(j)[2] = sampling_c3_options_.c3_height;
+        //     XX_full.at(j).segment(3,9) = XX_c3.at(j).segment(2,9);
+        //     XX_full.at(j)[12] = 0;
+        //     XX_full.at(j).segment(13,6) = XX_c3.at(j).segment(11,6);
+        //   }
+        //
+        //   //std::cerr << "other trajectory" << XX_full.at(0) << std::endl;
+        //   all_sample_dynamically_feasible_plans_.at(i) = XX_full;
+        // }
+
+        //test
+          if (test_c3_object -> flag_c3 == false) {
+            std::vector<Eigen::VectorXd> XX_full(N_+1, VectorXd::Zero(n_x_));
+            all_sample_dynamically_feasible_plans_.at(i) = XX_full;
+
+          }else {
+            std::vector<Eigen::VectorXd> XX_full(N_+1, VectorXd::Zero(n_x_));
+            std::vector<Eigen::VectorXd> XX_c3 = cost_trajectory_pair.second;
+
+            for (int j = 0; j < N_+1;j++) {
+              XX_full.at(j).head(2) = XX_c3.at(j).head(2);
+              XX_full.at(j)[2] = sampling_c3_options_.c3_height;
+              XX_full.at(j).segment(3,9) = XX_c3.at(j).segment(2,9);
+              XX_full.at(j)[12] = 0;
+              XX_full.at(j).segment(13,6) = XX_c3.at(j).segment(11,6);
+            }
+
+            //std::cerr << "other trajectory" << XX_full.at(0) << std::endl;
+            all_sample_dynamically_feasible_plans_.at(i) = XX_full;
+          }
+
+      }
 
       #pragma omp critical
       {
@@ -982,7 +1117,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_sample_costs_[i] = c3_cost +
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
-      if ((i==CURRENT_REPOSITION_INDEX) && (finished_reposition_flag_==true)) {
+      if ((i==CURRENT_REPOSITION_INDEX) && (finished_reposition_flag_==true) && (test_c3_object->flag_c3 == true)) {
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
         finished_reposition_flag_ = false;
       }
@@ -1118,16 +1253,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     bool updated_pos_or_rot = false;
     bool reset_progress_cost_buffer = false;
 
-    int n_q_franka;
-    if (sampling_c3_options_.with_z) {
-      n_q_franka = 3;
-    }else {
-      n_q_franka = 2;
-    }
 
-    Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(n_q_franka,n_q_franka,n_q_franka+4,n_q_franka+4);
+    Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(n_q_franka_,n_q_franka_,7,7);
     Eigen::VectorXd pos_and_rot_error_vec = x_lcs_curr.segment(3, 7) -
       x_lcs_final_des.get_value().segment(3, 7);
+
+    //std::cerr << "Q_pos_and_rot" << Q_pos_and_rot<< std::endl;
+    //std::cerr <<"pos_and_rot_error_vec" << pos_and_rot_error_vec << std::endl;
+
     double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
       Q_pos_and_rot * pos_and_rot_error_vec;
 
@@ -2164,7 +2297,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
        i < retained_count + all_sample_locations_.size();
        i++
       ) {
-    DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
+    //DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
     if ((i == retained_count) || (!is_doing_c3_ && i == retained_count + 1)) {
       // Skip the current location.
       // Skip the repositioning target if in repositioning mode.
@@ -2192,9 +2325,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   sample_buffer_.row(num_in_buffer_-1) = lowest_cost_sample;
   sample_costs_buffer_[num_in_buffer_-1] = lowest_buffer_cost;
 
-  DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
-  DRAKE_ASSERT(sample_buffer_.rows() == n_q_);
-  DRAKE_ASSERT(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
+  //DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
+  //DRAKE_ASSERT(sample_buffer_.rows() == n_q_);
+  //DRAKE_ASSERT(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
 }
 
 
@@ -2233,7 +2366,10 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+
+      //changetest
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
   }
 
@@ -2302,7 +2438,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
+      //testchange
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
   }
 
@@ -2342,6 +2480,11 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_curr_plan_->GetFullSolution();
+
+  c3_solution->x_sol_.resize(n_q_ + n_v_, N_);
+  c3_solution->u_sol_.resize(n_u_, N_);
+  //std::cerr <<"size of x_sol" << c3_solution->x_sol_.size() << std::endl;
+
   for (int i = 0; i < N_; i++) {
     if (sampling_c3_options_.with_z) {
       c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
@@ -2364,8 +2507,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
-
+      //changetest
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
 
   }
@@ -2449,8 +2593,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
-
+      //changetest
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
 
   }
@@ -2521,8 +2666,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
-
+      //testchange
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
 
   }
@@ -2562,6 +2708,10 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
   C3Output::C3Solution* c3_solution) const {
 double t = context.get_discrete_state(plan_start_time_index_)[0];
 
+  c3_solution->x_sol_.resize(n_q_ + n_v_, N_);
+  c3_solution->u_sol_.resize(n_u_, N_);
+
+
 auto z_sol = c3_best_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     if (sampling_c3_options_.with_z) {
@@ -2585,8 +2735,9 @@ auto z_sol = c3_best_plan_->GetFullSolution();
       c3_solution->u_sol_.col(i).head(2) =
           z_sol[i].segment(n_x_c3_ + n_lambda_, n_u_c3_).cast<float>();
 
-      c3_solution->u_sol_.col(i)[2] = 0.55917;
-
+      //changetest
+      //c3_solution->u_sol_.col(i)[2] = 0.55917;
+      c3_solution->u_sol_.col(i)[2] = 0;
     }
 
   }
@@ -3127,6 +3278,8 @@ void SamplingC3Controller::OutputSampleBufferCosts(
   Eigen::VectorXd* sample_buffer_costs) const {
     *sample_buffer_costs = sample_costs_buffer_;
 }
+
+
 
 } // namespace systems
 } // namespace dairlib

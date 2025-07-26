@@ -54,7 +54,9 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
     const double& sampling_radius,
-    const double& sampling_height);
+    const double& sampling_height,
+    const SamplingC3Options sampling_c3_options
+    );
 
 Eigen::VectorXd generate_random_sample_location_on_sphere(
     const int& n_q,

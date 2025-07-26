@@ -136,7 +136,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant,franka_index);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
@@ -232,10 +232,10 @@ int DoMain(int argc, char* argv[]) {
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
-  // null space associated with trying to control 7 joints with 6 DOF. 
+  // null space associated with trying to control 7 joints with 6 DOF.
   // The value is currently set to 1.1 to have it be more vertical for the jack
-  // example but not enough that it hits a singularity or ends up with too small 
-  // a workspace. 
+  // example but not enough that it hits a singularity or ends up with too small
+  // a workspace.
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
@@ -317,12 +317,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*owned_diagram, "/home/dair/opt/sampling_based_c3/dairlib/examples/sampling_c3/diagram/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/dair/opt/sampling_based_c3/dairlib/examples/sampling_c3/diagram/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

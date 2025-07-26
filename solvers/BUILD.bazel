@@ -40,6 +40,7 @@ cc_library(
     ],
     deps = [
         ":lcs",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",

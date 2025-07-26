@@ -118,6 +118,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
 
   int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities()
                                                 : plant_.num_positions();
+
   Matrix<double, 3, Eigen::Dynamic> Jv_WCa(3, n_cols);
   Matrix<double, 3, Eigen::Dynamic> Jv_WCb(3, n_cols);
 

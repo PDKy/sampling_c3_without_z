@@ -39,7 +39,7 @@ max_angle_from_vertical: 1.5 #1.75 rad = 100.26 deg   #1.9 rad is 110 deg
 # NOTE: IF YOU SET NUM ADDITIONAL SAMPLES TO 0, REMEMBER TO NOT VISUALIZE THE 
 #       SAMPLE LOCATIONS IN THE VISUALIZER. 
 num_additional_samples_repos: 1
-num_additional_samples_c3: 2
+num_additional_samples_c3: 3
 
 # Whether to consider the best sample from the buffer as a potential
 # repositioning target.
