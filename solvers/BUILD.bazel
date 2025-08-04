@@ -75,6 +75,7 @@ cc_library(
         "//multibody:geom_geom_collider",
         "//multibody/kinematic",
         "@drake//:drake_shared_library",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
     ],
 )
 

@@ -139,6 +139,7 @@ SamplingC3Controller::SamplingC3Controller(
 
 
   std::cerr << "number of lambda" << n_lambda_ << std::endl;
+  std::cerr << "num_contact_index" << sampling_c3_options_.num_contacts_index << std::endl;
 
   // Creates placeholder lcs to construct base C3 problem
   // Placeholder LCS will have correct size as it's already determined by the
@@ -857,8 +858,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       dt_, N_, contact_model_);
 
 
-    std::cerr << "matrix D cols: " << lcs_object_sample.D_[0].cols() << "matrix D rows: " <<lcs_object_sample.D_[0].rows()  << std::endl;
-    std::cerr <<"matrix F cols" << lcs_object_sample.F_[0].cols()<< "matrix F rows" << lcs_object_sample.F_[0].rows()<< std::endl;
+    //std::cerr << "matrix D cols: " << lcs_object_sample.D_[0].cols() << "matrix D rows: " <<lcs_object_sample.D_[0].rows()  << std::endl;
+    //std::cerr <<"matrix F cols" << lcs_object_sample.F_[0].cols()<< "matrix F rows" << lcs_object_sample.F_[0].rows()<< std::endl;
+
+    //
+
+    // for (int k =0; k< lcs_object_sample.F_[0].rows();k++) {
+    //   std::cerr <<"matrix F row:"<<k<<" " << lcs_object_sample.F_[0].row(k)<< std::endl;
+    //
+    // }
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
@@ -1021,6 +1029,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
 
       test_c3_object->Solve(test_state, verbose_);
+
+      //std::cerr << "solution:" << test_c3_object->GetForceSolution()[0] <<std::endl;
       //std::cerr << "i" << i << std::endl;
       // Get the state solution and calculate the cost.
       // This is taking in the xbox input to change the way we calculate cost
@@ -2541,6 +2551,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
                                                         lcs_state_input_port_);
 
   UpdateContext(lcs_x->get_data());
+
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;

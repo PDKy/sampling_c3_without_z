@@ -7,6 +7,8 @@
 
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/moby_lcp_solver.h"
+#include <drake/common/yaml/yaml_io.h>
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
 namespace dairlib {
 namespace solvers {
@@ -35,16 +37,18 @@ LCS LCSFactory::LinearizePlantToLCS(
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, ContactModel contact_model) {
-
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
-  bool with_z;
-  if (n_u == 2) {
-    with_z = false;
-
-  }
 
   int n_contacts = contact_geoms.size();
+
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
@@ -100,8 +104,12 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
 
-  if (!with_z) {
-    J_t.resize(2 * (n_contacts-1) * num_friction_directions + num_friction_directions, n_v);
+  int d_re;
+  n_contacts == 4 ? d_re = 2 : d_re = 4;
+
+
+  if (!sampling_c3_options.with_z) {
+    J_t.resize(2 * n_contacts * num_friction_directions - d_re, n_v);
 
   }
 
@@ -109,32 +117,49 @@ LCS LCSFactory::LinearizePlantToLCS(
     multibody::GeomGeomCollider collider(
         plant,
         contact_geoms[i]);
-    if (num_friction_directions == 1 || (!(with_z) && i ==0)) {
+    if (num_friction_directions == 1) {
       Eigen::Vector3d planar_normal;
-      int num_direction = 1;
-
       planar_normal << 0, 1, 0;
       auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
       phi(i) = phi_i;
       J_n.row(i) = J_i.row(0);
-      J_t.block(2 * i * num_direction, 0, 2 * num_direction,
-                n_v) = J_i.block(1, 0, 2 * num_direction, n_v);
+      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
     } else {
-      auto [phi_i, J_i] =
-          collider.EvalPolytope(context, num_friction_directions);
-      phi(i) = phi_i;
-      J_n.row(i) = J_i.row(0);
-      if (with_z) {
+
+      if (sampling_c3_options.with_z) {
+        auto [phi_i, J_i] =
+            collider.EvalPolytope(context, num_friction_directions);
+        phi(i) = phi_i;
+        J_n.row(i) = J_i.row(0);
         J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
                   n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+
       }else {
-        J_t.block(2 * i * num_friction_directions-2, 0, 2 * num_friction_directions,
-          n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+        if ((n_contacts == 4 && i ==0) || (n_contacts == 5 && i <2)) {
+          Eigen::Vector3d planar_normal;
+          int num_direction = 1;
+
+          planar_normal << 0, 1, 0;
+          auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
+          phi(i) = phi_i;
+          J_n.row(i) = J_i.row(0);
+          J_t.block(2 * i * num_direction, 0, 2 * num_direction,
+                    n_v) = J_i.block(1, 0, 2 * num_direction, n_v);
+        }else {
+          auto [phi_i, J_i] =
+              collider.EvalPolytope(context, num_friction_directions);
+          phi(i) = phi_i;
+          J_n.row(i) = J_i.row(0);
+        J_t.block(2 * i * num_friction_directions-d_re, 0, 2 * num_friction_directions,
+                    n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+
+        }
 
 
       }
-    }
 
+    }
     // J_i is 3 x n_v
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
@@ -169,34 +194,33 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd E_t =
       MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
 
+  if (!sampling_c3_options.with_z) {
+    E_t.resize(n_contacts, 2 * n_contacts * num_friction_directions - d_re);
 
-  if (!with_z) {
-    E_t.resize(n_contacts, 2 * n_contacts * num_friction_directions - 2);
   }
 
   for (int i = 0; i < n_contacts; i++) {
-
-    if (with_z) {
+    if (sampling_c3_options.with_z) {
       E_t.block(i, i * (2 * num_friction_directions), 1,
                 2 * num_friction_directions) =
           MatrixXd::Ones(1, 2 * num_friction_directions);
 
     }else {
-      if (i == 0) {
+      if ((n_contacts == 4 && i == 0) || (n_contacts ==5 && i <2) ) {
         int temp_num_friction_directions = 1;
 
         E_t.block(i, i * (2 * temp_num_friction_directions), 1,
           2 * temp_num_friction_directions) =
         MatrixXd::Ones(1, 2 * temp_num_friction_directions);
       }else {
-        E_t.block(i, i * (2 * num_friction_directions)-2, 1,
+        E_t.block(i, i * (2 * num_friction_directions)-d_re, 1,
           2 * num_friction_directions) =
         MatrixXd::Ones(1, 2 * num_friction_directions);
 
       }
 
-    }
 
+    }
 
   }
 
@@ -204,10 +228,11 @@ LCS LCSFactory::LinearizePlantToLCS(
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions;
   } else {
-    if (with_z) {
+    if (sampling_c3_options.with_z) {
       n_lambda = 2 * n_contacts * num_friction_directions;
     }else {
-      n_lambda = 2 * n_contacts * num_friction_directions -2;
+      n_lambda = 2 * n_contacts * num_friction_directions - d_re;
+
     }
 
   }
@@ -279,34 +304,34 @@ LCS LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  
-        - J_n * vNqdot * plant.GetPositions(context);
+    c.segment(n_contacts, n_contacts) =
+        phi + dt * dt * J_n * d_v - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
         J_t * dt * d_v;
-
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
     for (int i = 0; i < mu_vec.rows(); i++) {
-
-      if (with_z) {
+      if (sampling_c3_options.with_z) {
         anitescu_mu_vec.segment((2 * num_friction_directions) * i,
                                 2 * num_friction_directions) =
             mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
 
       }else {
-        if (i == 0) {
+        if ((n_contacts == 4 && i == 0) || (n_contacts ==5 && i <2) ) {
           int tem_num_friction_directions = 1;
           anitescu_mu_vec.segment((2 * tem_num_friction_directions) * i,
                         2 * tem_num_friction_directions) =
           mu_vec(i) * VectorXd::Ones(2 * tem_num_friction_directions);
+
         }else {
-          anitescu_mu_vec.segment((2 * num_friction_directions) * i -2,
-                          2 * num_friction_directions) =
-          mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
+          anitescu_mu_vec.segment((2 * num_friction_directions) * i - d_re,
+                        2 * num_friction_directions) =
+    mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
 
         }
+
       }
 
     }
@@ -343,8 +368,8 @@ LCS LCSFactory::LinearizePlantToLCS(
     w = J_t * (d_v);
   }
 
-
   LCS system(A, B, D, d, E, F, H, c, N, dt);
+  system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
 
@@ -356,6 +381,17 @@ LCSFactory::ComputeContactJacobian(
         contact_geoms,
     int num_friction_directions, const std::vector<double>& mu,
     dairlib::solvers::ContactModel contact_model) {
+
+
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(
+        base_path + "parameters/sampling_c3_options.yaml");
+
+
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();
@@ -363,21 +399,52 @@ LCSFactory::ComputeContactJacobian(
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
+
+
+  if (!sampling_c3_options.with_z) {
+    J_t.resize(2 * (n_contacts-1) * num_friction_directions + num_friction_directions, n_v);
+  }
+
   std::vector<VectorXd> contact_points;
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
         contact_geoms[i]);  // deleted num_friction_directions (check with
     // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
-    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
-    // TODO(yangwill): think about if we want to push back both witness points
-    contact_points.push_back(p_WCa);
-    phi(i) = phi_i;
-    J_n.row(i) = J_i.row(0);
-    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+
+    if (!(sampling_c3_options.with_z) && i ==0) {
+      Eigen::Vector3d planar_normal;
+      int num_direction = 1;
+
+      planar_normal << 0, 1, 0;
+      auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
+      auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+      contact_points.push_back(p_WCa);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      J_t.block(2 * i * num_direction, 0, 2 * num_direction,
+          n_v) = J_i.block(1, 0, 2 * num_direction, n_v);
+
+    }else {
+      auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+      auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+      // TODO(yangwill): think about if we want to push back both witness points
+      contact_points.push_back(p_WCa);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      if (sampling_c3_options.with_z) {
+        J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                  n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+      }else {
+        J_t.block(2 * i * num_friction_directions-2, 0, 2 * num_friction_directions,
+          n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+
+
+      }
+    }
   }
+
+
 
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     MatrixXd J_c = MatrixXd::Zero(
@@ -387,22 +454,66 @@ LCSFactory::ComputeContactJacobian(
   } else if (contact_model == ContactModel::kAnitescu) {
     MatrixXd E_t =
         MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
+
+    if (!sampling_c3_options.with_z) {
+      E_t.resize(n_contacts, 2 * n_contacts * num_friction_directions - 2);
+    }
+
+
     for (int i = 0; i < n_contacts; i++) {
-      E_t.block(i, i * (2 * num_friction_directions), 1,
-                2 * num_friction_directions) =
+      if (sampling_c3_options.with_z) {
+        E_t.block(i, i * (2 * num_friction_directions), 1,
+          2 * num_friction_directions) =
+    MatrixXd::Ones(1, 2 * num_friction_directions);
+      }else {
+        if (i == 0) {
+          int temp_num_friction_directions = 1;
+
+          E_t.block(i, i * (2 * temp_num_friction_directions), 1,
+            2 * temp_num_friction_directions) =
+          MatrixXd::Ones(1, 2 * temp_num_friction_directions);
+        }else {
+          E_t.block(i, i * (2 * num_friction_directions)-2, 1,
+            2 * num_friction_directions) =
           MatrixXd::Ones(1, 2 * num_friction_directions);
+
+        }
+
+      }
+
     }
     int n_contact_vars = 2 * n_contacts * num_friction_directions;
+    if(!sampling_c3_options.with_z) {
+      n_contact_vars = 2* n_contacts * num_friction_directions-2;
+    }
+
 
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_contact_vars);
     for (int i = 0; i < mu_vec.rows(); i++) {
-      double cur = mu_vec(i);
-      anitescu_mu_vec(4 * i) = cur;
-      anitescu_mu_vec(4 * i + 1) = cur;
-      anitescu_mu_vec(4 * i + 2) = cur;
-      anitescu_mu_vec(4 * i + 3) = cur;
+
+      if (sampling_c3_options.with_z) {
+        double cur = mu_vec(i);
+        anitescu_mu_vec(4 * i) = cur;
+        anitescu_mu_vec(4 * i + 1) = cur;
+        anitescu_mu_vec(4 * i + 2) = cur;
+        anitescu_mu_vec(4 * i + 3) = cur;
+      }else {
+        if (i == 0) {
+          double cur = mu_vec(i);
+          anitescu_mu_vec(4 * i) = cur;
+          anitescu_mu_vec(4 * i + 1) = cur;
+        }else {
+          double cur = mu_vec(i);
+          anitescu_mu_vec(4 * i-2) = cur;
+          anitescu_mu_vec(4 * i + 1-2) = cur;
+          anitescu_mu_vec(4 * i + 2-2) = cur;
+          anitescu_mu_vec(4 * i + 3-2) = cur;
+        }
+
+      }
+
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;

@@ -99,7 +99,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
   SamplingC3Options sampling_c3_options =
     drake::yaml::LoadYamlFile<SamplingC3Options>(
         base_path + "parameters/sampling_c3_options.yaml");
@@ -387,7 +387,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
   SamplingC3Options sampling_c3_options =
     drake::yaml::LoadYamlFile<SamplingC3Options>(
         base_path + "parameters/sampling_c3_options.yaml");
@@ -693,7 +693,7 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
   SamplingC3Options sampling_c3_options =
     drake::yaml::LoadYamlFile<SamplingC3Options>(
         base_path + "parameters/sampling_c3_options.yaml");
@@ -845,7 +845,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  std::string base_path = "/home/dair/opt/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
+  std::string base_path = "/home/dair/opt/test/new_delet_z_sampling_c3/dairlib/examples/sampling_c3/push_t/";
   SamplingC3Options sampling_c3_options =
     drake::yaml::LoadYamlFile<SamplingC3Options>(
         base_path + "parameters/sampling_c3_options.yaml");

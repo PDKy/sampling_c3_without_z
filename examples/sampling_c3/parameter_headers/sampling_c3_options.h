@@ -37,6 +37,7 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> g_lambda_n;
   std::vector<std::vector<double>> g_lambda_t;
   std::vector<std::vector<double>> g_lambda;
+  std::vector<std::vector<double>> g_lambda_without_z;
   std::vector<double> g_u;
   std::vector<double> g_u_without_z;
 
@@ -49,6 +50,7 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> u_lambda_n;
   std::vector<std::vector<double>> u_lambda_t;
   std::vector<std::vector<double>> u_lambda;
+  std::vector<std::vector<double>> u_lambda_without_z;
   std::vector<double> u_u;
   std::vector<double> u_u_without_z;
 
@@ -70,6 +72,8 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> g_lambda_n_position_tracking;
   std::vector<std::vector<double>> g_lambda_t_position_tracking;
   std::vector<std::vector<double>> g_lambda_position_tracking;
+  std::vector<std::vector<double>> g_lambda_position_tracking_without_z;
+
   std::vector<double> g_u_position_tracking;
   std::vector<double> g_u_position_tracking_without_z;
 
@@ -82,6 +86,7 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> u_lambda_n_position_tracking;
   std::vector<std::vector<double>> u_lambda_t_position_tracking;
   std::vector<std::vector<double>> u_lambda_position_tracking;
+  std::vector<std::vector<double>> u_lambda_position_tracking_without_z;
   std::vector<double> u_u_position_tracking;
   std::vector<double> u_u_position_tracking_without_z;
   std::vector<std::vector<double>> mu;
@@ -152,6 +157,7 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
+    a->Visit(DRAKE_NVP(g_lambda_without_z));
     a->Visit(DRAKE_NVP(g_u));
     a->Visit(DRAKE_NVP(g_u_without_z));
     a->Visit(DRAKE_NVP(g_x_position_tracking));
@@ -161,6 +167,8 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(g_lambda_n_position_tracking));
     a->Visit(DRAKE_NVP(g_lambda_t_position_tracking));
     a->Visit(DRAKE_NVP(g_lambda_position_tracking));
+    a->Visit(DRAKE_NVP(g_lambda_position_tracking_without_z));
+
     a->Visit(DRAKE_NVP(g_u_position_tracking));
     a->Visit(DRAKE_NVP(g_u_position_tracking_without_z));
     a->Visit(DRAKE_NVP(u_x));
@@ -169,6 +177,7 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(u_lambda_n));
     a->Visit(DRAKE_NVP(u_lambda_t));
     a->Visit(DRAKE_NVP(u_lambda));
+    a->Visit(DRAKE_NVP(u_lambda_without_z));
     a->Visit(DRAKE_NVP(u_u));
     a->Visit(DRAKE_NVP(u_u_without_z));
     a->Visit(DRAKE_NVP(u_x_position_tracking));
@@ -177,6 +186,8 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(u_lambda_n_position_tracking));
     a->Visit(DRAKE_NVP(u_lambda_t_position_tracking));
     a->Visit(DRAKE_NVP(u_lambda_position_tracking));
+    a->Visit(DRAKE_NVP(u_lambda_position_tracking_without_z));
+
     a->Visit(DRAKE_NVP(u_u_position_tracking));
     a->Visit(DRAKE_NVP(u_u_position_tracking_without_z));
     //TODO is this right?
@@ -235,10 +246,19 @@ struct SamplingC3Options {
       g_vector_position_tracking_for_curr_location.insert(g_vector_position_tracking_for_curr_location.end(), g_lambda_t_position_tracking[num_contacts_index_for_curr_location].begin(), g_lambda_t_position_tracking[num_contacts_index_for_curr_location].end());
 
     } else {
-      g_vector.insert(g_vector.end(), g_lambda[num_contacts_index].begin(), g_lambda[num_contacts_index].end());
-      g_vector_for_curr_location.insert(g_vector_for_curr_location.end(), g_lambda[num_contacts_index_for_curr_location].begin(), g_lambda[num_contacts_index_for_curr_location].end());
-      g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_position_tracking[num_contacts_index].begin(), g_lambda_position_tracking[num_contacts_index].end());
-      g_vector_position_tracking_for_curr_location.insert(g_vector_position_tracking_for_curr_location.end(), g_lambda_position_tracking[num_contacts_index_for_curr_location].begin(), g_lambda_position_tracking[num_contacts_index_for_curr_location].end());
+      if (with_z) {
+        g_vector.insert(g_vector.end(), g_lambda[num_contacts_index].begin(), g_lambda[num_contacts_index].end());
+        g_vector_for_curr_location.insert(g_vector_for_curr_location.end(), g_lambda[num_contacts_index_for_curr_location].begin(), g_lambda[num_contacts_index_for_curr_location].end());
+        g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_position_tracking[num_contacts_index].begin(), g_lambda_position_tracking[num_contacts_index].end());
+        g_vector_position_tracking_for_curr_location.insert(g_vector_position_tracking_for_curr_location.end(), g_lambda_position_tracking[num_contacts_index_for_curr_location].begin(), g_lambda_position_tracking[num_contacts_index_for_curr_location].end());
+      }else {
+        g_vector.insert(g_vector.end(), g_lambda_without_z[num_contacts_index].begin(), g_lambda_without_z[num_contacts_index].end());
+        g_vector_for_curr_location.insert(g_vector_for_curr_location.end(), g_lambda_without_z[num_contacts_index_for_curr_location].begin(), g_lambda_without_z[num_contacts_index_for_curr_location].end());
+        g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_position_tracking_without_z[num_contacts_index].begin(), g_lambda_position_tracking_without_z[num_contacts_index].end());
+        g_vector_position_tracking_for_curr_location.insert(g_vector_position_tracking_for_curr_location.end(), g_lambda_position_tracking_without_z[num_contacts_index_for_curr_location].begin(), g_lambda_position_tracking_without_z[num_contacts_index_for_curr_location].end());
+
+      }
+
     }
 
     if (with_z) {
@@ -296,10 +316,20 @@ struct SamplingC3Options {
       u_vector_position_tracking_for_curr_location.insert(u_vector_position_tracking_for_curr_location.end(), u_lambda_t_position_tracking[num_contacts_index_for_curr_location].begin(), u_lambda_t_position_tracking[num_contacts_index_for_curr_location].end());
 
     } else {
-      u_vector.insert(u_vector.end(), u_lambda[num_contacts_index].begin(), u_lambda[num_contacts_index].end());
-      u_vector_for_curr_location.insert(u_vector_for_curr_location.end(), u_lambda[num_contacts_index_for_curr_location].begin(), u_lambda[num_contacts_index_for_curr_location].end());
-      u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_position_tracking[num_contacts_index].begin(), u_lambda_position_tracking[num_contacts_index].end());
-      u_vector_position_tracking_for_curr_location.insert(u_vector_position_tracking_for_curr_location.end(), u_lambda_position_tracking[num_contacts_index_for_curr_location].begin(), u_lambda_position_tracking[num_contacts_index_for_curr_location].end());
+
+      if (with_z) {
+        u_vector.insert(u_vector.end(), u_lambda[num_contacts_index].begin(), u_lambda[num_contacts_index].end());
+        u_vector_for_curr_location.insert(u_vector_for_curr_location.end(), u_lambda[num_contacts_index_for_curr_location].begin(), u_lambda[num_contacts_index_for_curr_location].end());
+        u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_position_tracking[num_contacts_index].begin(), u_lambda_position_tracking[num_contacts_index].end());
+        u_vector_position_tracking_for_curr_location.insert(u_vector_position_tracking_for_curr_location.end(), u_lambda_position_tracking[num_contacts_index_for_curr_location].begin(), u_lambda_position_tracking[num_contacts_index_for_curr_location].end());
+      }else {
+        u_vector.insert(u_vector.end(), u_lambda_without_z[num_contacts_index].begin(), u_lambda_without_z[num_contacts_index].end());
+        u_vector_for_curr_location.insert(u_vector_for_curr_location.end(), u_lambda_without_z[num_contacts_index_for_curr_location].begin(), u_lambda_without_z[num_contacts_index_for_curr_location].end());
+        u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_position_tracking_without_z[num_contacts_index].begin(), u_lambda_position_tracking_without_z[num_contacts_index].end());
+        u_vector_position_tracking_for_curr_location.insert(u_vector_position_tracking_for_curr_location.end(), u_lambda_position_tracking_without_z[num_contacts_index_for_curr_location].begin(), u_lambda_position_tracking_without_z[num_contacts_index_for_curr_location].end());
+
+      }
+
     }
 
     if (with_z) {

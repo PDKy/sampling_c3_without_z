@@ -57,6 +57,7 @@ template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPlanar(
     const Context<T>& context, const Vector3d& planar_normal,
     JacobianWrtVariable wrt) {
+
   return DoEval(context, planar_normal.transpose(), wrt, true);
 }
 
@@ -137,22 +138,33 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   // These calculations cannot easily be moved to the EvalPlanar() method,
   // since they depend so heavily on the contact normal.
   // thus the somewhat awkward calculations here.
-  if (planar) {
-    Vector3d planar_normal = force_basis.row(0);
-    force_basis = Eigen::MatrixXd::Zero(3, 3);
-    force_basis.resize(3, 3);
-    // First row is the contact normal, projected to the plane
-    force_basis.row(0) =
-        signed_distance_pair.nhat_BA_W -
-        planar_normal * planar_normal.dot(signed_distance_pair.nhat_BA_W);
-    force_basis.row(0).normalize();
+  // if (planar) {
+  //   Vector3d planar_normal = force_basis.row(0);
+  //   force_basis = Eigen::MatrixXd::Zero(3, 3);
+  //   force_basis.resize(3, 3);
+  //   // First row is the contact normal, projected to the plane
+  //   force_basis.row(0) =
+  //       signed_distance_pair.nhat_BA_W -
+  //       planar_normal * planar_normal.dot(signed_distance_pair.nhat_BA_W);
+  //   force_basis.row(0).normalize();
+  //
+  //   // Second row is the cross product between contact normal and planar normal
+  //   force_basis.row(1) = signed_distance_pair.nhat_BA_W.cross(planar_normal);
+  //   force_basis.row(1).normalize();
+  //   force_basis.row(2) = -force_basis.row(1);
+  //   R_WC = drake::math::RotationMatrix<T>::Identity();
+  // }
 
-    // Second row is the cross product between contact normal and planar normal
-    force_basis.row(1) = signed_distance_pair.nhat_BA_W.cross(planar_normal);
-    force_basis.row(1).normalize();
-    force_basis.row(2) = -force_basis.row(1);
-    R_WC = drake::math::RotationMatrix<T>::Identity();
-  }
+  if (planar) {
+    force_basis.resize(3,3);
+    force_basis.row(0) << 1,0,0;
+    force_basis.row(1) << 0,1,0;
+    force_basis.row(2) << 0,-1,0;
+
+    }
+
+
+
   // Standard case
   auto J = force_basis * R_WC.matrix().transpose() * (Jv_WCa - Jv_WCb);
   return std::pair<T, MatrixX<T>>(signed_distance_pair.distance, J);
