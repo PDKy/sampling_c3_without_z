@@ -134,6 +134,13 @@ LCS LCSFactory::LinearizePlantToLCS(
         J_n.row(i) = J_i.row(0);
         J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
                   n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+        // if ((i != 0 && n_contacts ==4) || (i>=2 && n_contacts ==5) ) {
+        //   std::cout << "J_i for ground: "<< i << J_i << std::endl;
+        // }
+
+        if ((i == 0 && n_contacts ==4) || (i<2 && n_contacts ==5) ) {
+          std::cout << "J_i for end-effector: "<< i << J_i << std::endl;
+        }
 
       }else {
         if ((n_contacts == 4 && i ==0) || (n_contacts == 5 && i <2)) {
@@ -146,6 +153,7 @@ LCS LCSFactory::LinearizePlantToLCS(
           J_n.row(i) = J_i.row(0);
           J_t.block(2 * i * num_direction, 0, 2 * num_direction,
                     n_v) = J_i.block(1, 0, 2 * num_direction, n_v);
+          std::cout << "J_i for end-effector: "<< J_i << std::endl;
         }else {
           auto [phi_i, J_i] =
               collider.EvalPolytope(context, num_friction_directions);
@@ -154,6 +162,7 @@ LCS LCSFactory::LinearizePlantToLCS(
         J_t.block(2 * i * num_friction_directions-d_re, 0, 2 * num_friction_directions,
                     n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
 
+          std::cout << "J_i for ground" << J_i << std::endl;
         }
 
 
@@ -196,8 +205,10 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   if (!sampling_c3_options.with_z) {
     E_t.resize(n_contacts, 2 * n_contacts * num_friction_directions - d_re);
-
+    E_t = MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions-d_re);
   }
+
+
 
   for (int i = 0; i < n_contacts; i++) {
     if (sampling_c3_options.with_z) {
@@ -337,7 +348,16 @@ LCS LCSFactory::LinearizePlantToLCS(
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     // Constructing friction bases
+    std::cout << "E_t" << E_t << std::endl;
+    std::cout << "J_n" << J_n << std::endl;
+    std::cout << "J_t" << J_t << std::endl;
+    std::cout << "anitescu_mu_vector" << anitescu_mu_vec << std::endl;
+    std::cout << "anitescu_mu_matrix" << J_t << std::endl;
+
+
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
+
+    std::cout << "J_c" << J_c << std::endl;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
 
@@ -366,10 +386,12 @@ LCS LCSFactory::LinearizePlantToLCS(
     W_l = J_t * (MinvJ_c_T);
     W_u = J_t * (AB_v_u);
     w = J_t * (d_v);
+
+    std::cout << "F" << F << std::endl;
   }
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
-  system.SetTangentGapLinearization(W_x, W_l, W_u, w);
+  //system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
 
@@ -416,7 +438,7 @@ LCSFactory::ComputeContactJacobian(
       Eigen::Vector3d planar_normal;
       int num_direction = 1;
 
-      planar_normal << 0, 1, 0;
+      planar_normal << 1, 0, 0;
       auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
       auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
       contact_points.push_back(p_WCa);

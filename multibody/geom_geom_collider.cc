@@ -133,35 +133,55 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
       signed_distance_pair.nhat_BA_W, 0);
 
-  // if this is a planar problem, then the basis has one row and encodes
-  // the planar normal direction.
-  // These calculations cannot easily be moved to the EvalPlanar() method,
-  // since they depend so heavily on the contact normal.
-  // thus the somewhat awkward calculations here.
+
+
   // if (planar) {
-  //   Vector3d planar_normal = force_basis.row(0);
-  //   force_basis = Eigen::MatrixXd::Zero(3, 3);
-  //   force_basis.resize(3, 3);
-  //   // First row is the contact normal, projected to the plane
-  //   force_basis.row(0) =
-  //       signed_distance_pair.nhat_BA_W -
-  //       planar_normal * planar_normal.dot(signed_distance_pair.nhat_BA_W);
-  //   force_basis.row(0).normalize();
+  //   force_basis.resize(3,3);
+  //   force_basis.row(0) << 1,0,0;
+  //   force_basis.row(1) << 0,1,0;
+  //   force_basis.row(2) << 0,-1,0;
   //
-  //   // Second row is the cross product between contact normal and planar normal
-  //   force_basis.row(1) = signed_distance_pair.nhat_BA_W.cross(planar_normal);
-  //   force_basis.row(1).normalize();
-  //   force_basis.row(2) = -force_basis.row(1);
-  //   R_WC = drake::math::RotationMatrix<T>::Identity();
-  // }
+  //   }
 
   if (planar) {
-    force_basis.resize(3,3);
-    force_basis.row(0) << 1,0,0;
-    force_basis.row(1) << 0,1,0;
-    force_basis.row(2) << 0,-1,0;
 
-    }
+    Vector3d planar_normal = Vector3d::UnitZ();
+    force_basis = Eigen::MatrixXd::Zero(3, 3);
+    force_basis.resize(3, 3);
+    // First row is the contact normal, projected to the plane
+    force_basis.row(0) = signed_distance_pair.nhat_BA_W - planar_normal*planar_normal.dot(signed_distance_pair.nhat_BA_W);
+    force_basis.row(0).normalize();
+
+    // Second row is the cross product between contact normal and planar normal
+    force_basis.row(1) = signed_distance_pair.nhat_BA_W.cross(planar_normal);
+    force_basis.row(1).normalize();
+    force_basis.row(2) = -force_basis.row(1);
+    R_WC = drake::math::RotationMatrix<T>::Identity();
+  }
+
+  // if (planar) {
+  //   // ❶ Pick the plane’s normal (z–axis).
+  //   Vector3d planar_normal(0, 0, 1);
+  //
+  //   // ❷ Build an orthonormal basis {t₁,t₂} in the x-y plane.
+  //   //    Here we fix them to ±x and ±y so the basis is constant.
+  //   force_basis.resize(3, 3);
+  //   force_basis.setZero();
+  //
+  //   // Row-0 –– the **contact normal** (must stay in the basis!)
+  //   force_basis.row(0) = planar_normal.transpose();   // ( 0  0  1 )
+  //
+  //   // Row-1/2 –– two **tangential directions** in x-y.
+  //   //           Using +x and +y keeps the cone axis-aligned.
+  //   force_basis.row(1) << 0, 1, 0;   //  +x
+  //   force_basis.row(2) << 0, -1, 0;   //  +y
+  //   // Note: If you still want ±pairs, duplicate with a minus sign
+  //   //       and enlarge J_t/E_t accordingly.
+  //
+  //   // Rotation matrix no longer needed in the planar case
+  //   R_WC = drake::math::RotationMatrix<T>::Identity();
+  //
+  // }
 
 
 

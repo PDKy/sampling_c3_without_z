@@ -1030,6 +1030,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       test_c3_object->Solve(test_state, verbose_);
 
+
+      // auto z_sol_temp = test_c3_object-> GetFullSolution();
+      // for (int j = 0; j < N_; j++) {
+      //   std::cout << "At time horizon:" << j;
+      //   std::cout << "lambda" << z_sol_temp[j].segment(n_x_c3_,n_lambda_) << std::endl;
+      // }
       //std::cerr << "solution:" << test_c3_object->GetForceSolution()[0] <<std::endl;
       //std::cerr << "i" << i << std::endl;
       // Get the state solution and calculate the cost.
